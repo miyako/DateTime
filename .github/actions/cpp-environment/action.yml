@@ -1,0 +1,23 @@
+name: Native Windows C++ environment
+description: Initialize the installed VS2022 v143 x64 compiler and Windows SDK
+runs:
+  using: composite
+  steps:
+    - shell: pwsh
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' `
+          -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+        if (-not $vs) { throw "Native VS2022 C++ v143 tools are required" }
+        $devCmd = Join-Path $vs "Common7\Tools\VsDevCmd.bat"
+        $variables = & $env:ComSpec /d /c "call `"$devCmd`" -arch=x64 -host_arch=x64 >nul && set"
+        if ($LASTEXITCODE -ne 0) { throw "VsDevCmd x64 initialization failed" }
+        $utf8 = [System.Text.UTF8Encoding]::new($false)
+        foreach ($line in $variables) {
+          if ($line -notmatch '^([^=]+)=(.*)$') { continue }
+          $name, $value = $Matches[1], $Matches[2]
+          if ($name -match '^(GITHUB_|RUNNER_)' -or $name -eq 'NODE_OPTIONS') { continue }
+          if ([Environment]::GetEnvironmentVariable($name) -ne $value) {
+            [IO.File]::AppendAllText($env:GITHUB_ENV, "$name=$value`n", $utf8)
+          }
+        }

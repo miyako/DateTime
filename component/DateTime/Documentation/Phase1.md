@@ -121,3 +121,14 @@ unpacked compiled host are separate checks. Successful CLI CI is not Windows
 4D acceptance. Signing, dependency-manager release download and native foreign
 4D hosts must remain `not_run` without execution evidence. Local unsigned
 packaging alone is not full cross-platform release readiness.
+
+Production native jobs independently require installed-executable dependency
+and private-symbol inspection. Optional full-baseline jobs are separate from
+assembly and retain failed diagnostics and measurement status. A failed Windows
+full comparison does not justify a fabricated reduction value, omitted data or
+a skipped production/runtime gate. The source-built Windows bootstrap needed by
+`gencfu` is distinct from the self-contained production executable.
+Its `u_init()` requires the source-built converter alias table under
+`generated/icudt77l/cnvalias.icu`, matching ICU's official Windows data layout.
+The identical alias bytes fail to initialize in a flat directory and succeed
+in the package-named directory; no prebuilt/bootstrap `.dat` is used.

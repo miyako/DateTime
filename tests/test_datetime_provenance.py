@@ -34,15 +34,17 @@ class DateTimeProvenanceTests(unittest.TestCase):
     def test_dependency_build_and_protocol_inputs_invalidate_manifest(self):
         with tempfile.TemporaryDirectory(prefix="datetime manifest ") as temporary:
             root = Path(temporary)
-            for name in ("cli", "scripts", "tests"):
-                (root / name).mkdir()
+            for name in ("cli", "scripts", "tests", ".github/workflows", ".github/actions/cpp-environment"):
+                (root / name).mkdir(parents=True)
             (root / "template.json").write_text(json.dumps({"language": "cpp"}))
             (root / "package.json").write_text("{}")
             (root / "cli/main.cpp").write_text("int main() {}")
             executable = root / "datetime"
             executable.write_bytes(b"synthetic test artifact, never executed")
             for relative in ("scripts/build_icu.py", "scripts/build_cli.py",
-                             "scripts/build_provenance.py", "tests/cli-contract.json"):
+                             "scripts/build_provenance.py", "scripts/measure_cli.py",
+                             "tests/cli-contract.json", ".github/workflows/ci.yml",
+                             ".github/actions/cpp-environment/action.yml"):
                 path = root / relative
                 path.write_text("original build input")
                 record(root, "macos-arm64", executable, False, "synthetic")

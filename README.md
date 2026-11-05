@@ -114,6 +114,10 @@ Cross-built or translated execution is not native platform acceptance.
 Partial local acceptance is **not release ready**.
 See [Phase 1 measurements](component/DateTime/Documentation/Phase1.md) for actual
 source/data pins, installed bytes, executable ZIP bytes and timing methodology.
+CI's production native jobs retain mandatory protocol, dependency and
+private-symbol checks. Full/unfiltered comparisons run in separate optional
+baseline jobs; a baseline failure is recorded as incomplete measurement evidence,
+not a production success or a reason to bypass any package/host gate.
 
 ## Install and deployment
 

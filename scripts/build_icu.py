@@ -194,6 +194,11 @@ def windows_data_filter(scratch, filter_file):
     return path
 
 
+def windows_data_directory(work):
+    # ICU looks for loose data inside its package-named directory, as makedata.mak does.
+    return work / "generated" / "icudt77l"
+
+
 def windows_data_command(source, generated, scratch, filter_file):
     command = [os.sys.executable, "-u", "-B", "-m", "icutools.databuilder",
                "--mode", "windows-exec", "--seqmode", "parallel", "--verbose",
@@ -220,7 +225,7 @@ def windows_build(source, installation, work, filter_file, env, log, jobs):
         executable = source / "tools" / tool / "x64/Release" / (tool + ".exe")
         if not executable.is_file() or executable.is_symlink():
             raise ValueError("ICU native source-data tool is missing: " + str(executable))
-    generated = checked_directory(work / "generated")
+    generated = checked_directory(windows_data_directory(work))
     scratch = checked_directory(work / "data-tmp")
     data_env = env.copy()
     data_env["PYTHONPATH"] = str(source / "python")

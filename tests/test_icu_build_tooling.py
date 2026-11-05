@@ -125,6 +125,18 @@ class DownloadTests(unittest.TestCase):
 
 
 class WindowsDataWiringTests(unittest.TestCase):
+    def test_source_output_matches_icu_loose_data_package_directory(self):
+        work = Path("fixture/work")
+        generated = build_icu.windows_data_directory(work)
+        self.assertEqual(generated, work / "generated/icudt77l")
+        self.assertEqual(generated.name, "icudt77l")
+        base = ROOT / "build/tooling-test-fixtures"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as directory:
+            command = build_icu.windows_data_command(Path("fixture/icu/source"), generated,
+                                                     Path(directory), None)
+        self.assertEqual(command[command.index("--out_dir") + 1], generated)
+
     def test_all_full_source_categories_have_bootstrap_tools(self):
         expected = {"gencnval", "gencfu", "makeconv", "genbrk", "gensprep", "gendict", "icupkg", "genrb"}
         self.assertEqual(set(build_icu.WINDOWS_DATA_TOOLS), expected)
