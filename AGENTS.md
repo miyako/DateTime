@@ -514,9 +514,8 @@ CI handles branch pushes, PRs and dispatch, never tags; the bot's `GITHUB_TOKEN`
 commit does not recursively trigger CI. Publish explicitly calls reusable CI
 with `release_call:true` to avoid a second optional compiled inspection.
 The same input commit must bind all native manifests and acceptance evidence.
-Signing policy is read at the version commit SHA. Manual
-`require_apple_signing` can escalate an unsigned version but cannot downgrade
-a policy-required signed version.
+Signing policy is read at the version commit SHA and exclusively controls
+Publish signing. The dispatch form has no signing override.
 Only after compilation and exact final-host success does `release_assets.py`
 verify downloaded ZIP/DMG/proof bytes, accepted hashes/sizes, revision, native
 manifests and full source/final-host contracts. It then verifies main ancestry,
@@ -600,7 +599,7 @@ Report unsupported/unavailable checks as `not_run`; local success remains
 `release_ready:false`. Approved publication additionally requires the synchronized
 version commit, all required native artifact/tests, hosted 4D opt-in and the final
 package-host gate before tag creation. Signing is optional by default; a listed
-version or explicit signed dispatch requires every signing/notarization gate.
+version requires every signing/notarization gate.
 
 The final handoff must identify the repository/namespace/class/CLI/language,
 revision and input provenance, exact commands/results, tool versions, stable ZIP
@@ -673,8 +672,10 @@ existing `.4dbase` layout without introducing an application `Contents/` tree.
 `{"schema":1,"apple_notarized_versions":[]}`. List exact component versions
 without `v` to require signed releases; commit the policy before running Publish
 for that next version. A missing policy or unlisted version means unsigned;
-malformed policy fails closed. Manual `require_apple_signing` and the helper's
-`--require-apple-signing` can only escalate, never downgrade policy.
+malformed policy fails closed. Publish has no signing checkbox or override;
+it resolves the policy and passes the helper's `--require-apple-signing` only
+to stages for a policy-required signed version. The helper flag cannot downgrade
+policy.
 `scripts/sign_release.py policy --root .` emits `apple_signing` without accessing
 secrets; the workflow passes credentials only to the policy-true stage.
 Registering secrets does not change policy. No secret below is required by the

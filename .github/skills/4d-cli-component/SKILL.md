@@ -48,11 +48,12 @@ scripts/tests. Resolve all paths below from the repository root, not this folder
    Manual initialized CI with `FOURD_ENABLED=true` retains accepted compiled
    ZIP/evidence without publication. Signing is implemented but opt-in:
    `release-policy.json.apple_notarized_versions` defaults to unsigned; a listed
-   version or manual `require_apple_signing` requires the isolated signing,
+   version requires the isolated signing,
    notarized/stapled DMG and final repacked ZIP compiled-host gates. Only that
    branch receives the seven Apple secrets. Missing credentials never downgrade
    to unsigned. Keep exactly CI and Publish workflows. Manual Publish on main
-   accepts patch/minor/major (default patch), synchronizes registered version
+   accepts only patch/minor/major (default patch), with no signing override.
+   Signing is controlled solely by version policy. Publish synchronizes registered version
    metadata/contracts/docs and commits to main before building that exact SHA.
    Downloaded asset/hash/host-evidence and collision checks precede new tag/release
    creation. Do not precreate tags or enable tag-push publication.

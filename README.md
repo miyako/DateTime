@@ -149,10 +149,10 @@ tag/release collisions before the version commit and again before publication.
 A failed build leaves its version commit, not a release tag. A same-mode retry
 can reuse that candidate; an existing tag or release is never overwritten.
 
-Unsigned publication is the default. Select **require_apple_signing** for
-signed/notarized macOS assets, or list the next exact version in
-`release-policy.json.apple_notarized_versions`; a manual request cannot weaken
-that policy. The signed path signs an isolated compiled component, notarizes
+Signing is controlled by version policy, not by a Publish checkbox. Unsigned
+publication is the default; list the next exact version in
+`release-policy.json.apple_notarized_versions` to require signed/notarized macOS
+assets. The signed path signs an isolated compiled component, notarizes
 and staples a DMG, repacks `DateTime.zip` from the final mounted DMG, and reruns
 the exact final ZIP's compiled-host checks. Missing credentials or failed
 signing never fall back to unsigned. See [AGENTS.md](AGENTS.md#8-icons-licensing-and-optional-signing)
