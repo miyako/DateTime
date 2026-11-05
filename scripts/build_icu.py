@@ -9,12 +9,24 @@ from pathlib import Path, PurePosixPath
 import platform
 import shutil
 import subprocess
+import sys
 import tarfile
+import time
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
+DOWNLOAD_ATTEMPTS = 4
+
+
+def retryable_download_error(error):
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code in (408, 429) or 500 <= error.code <= 599
+    if isinstance(error, urllib.error.URLError):
+        return isinstance(error.reason, TimeoutError)
+    return isinstance(error, TimeoutError)
 
 
 def digest(path, algorithm="sha256"):
@@ -93,16 +105,32 @@ def download(spec, directory):
         partial = output.with_suffix(output.suffix + ".part")
         if partial.is_symlink():
             raise ValueError("partial download is a symlink")
-        try:
-            with urllib.request.urlopen(spec["url"], timeout=120) as inp, partial.open("wb") as out:
-                if not inp.url.startswith("https://"):
-                    raise ValueError("dependency redirected away from HTTPS")
-                shutil.copyfileobj(inp, out)
-            if digest(partial, "sha512") != spec["sha512"]:
-                raise ValueError("dependency SHA512 mismatch: " + output.name)
-            partial.replace(output)
-        finally:
-            partial.unlink(missing_ok=True)
+        for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+            if partial.is_symlink():
+                raise ValueError("partial download is a symlink")
+            try:
+                with urllib.request.urlopen(spec["url"], timeout=120) as inp, partial.open("wb") as out:
+                    if not inp.url.startswith("https://"):
+                        raise ValueError("dependency redirected away from HTTPS")
+                    shutil.copyfileobj(inp, out)
+                if digest(partial, "sha512") != spec["sha512"]:
+                    raise ValueError("dependency SHA512 mismatch: " + output.name)
+                partial.replace(output)
+                break
+            except (urllib.error.URLError, TimeoutError) as error:
+                if not retryable_download_error(error):
+                    raise
+                reason = "HTTP " + str(error.code) if isinstance(error, urllib.error.HTTPError) else "socket timeout"
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if attempt == DOWNLOAD_ATTEMPTS:
+                    raise ValueError(f"ICU dependency download exhausted {attempt} attempts: {output.name}: {reason}") from error
+                delay = 2 ** (attempt - 1)
+                print(f"ICU dependency download retry {attempt}/{DOWNLOAD_ATTEMPTS - 1} "
+                      f"for {output.name}: {reason}; waiting {delay}s", file=sys.stderr)
+                time.sleep(delay)
+            finally:
+                partial.unlink(missing_ok=True)
     if digest(output, "sha512") != spec["sha512"]:
         raise ValueError("cached dependency SHA512 mismatch: " + output.name)
     return output
@@ -130,6 +158,23 @@ def run(command, cwd, env, log):
                    stderr=subprocess.STDOUT, check=True, timeout=1800)
 
 
+def windows_data_library(source, installation, generated, scratch, work, env, log):
+    # ICU 77.1 pkgdata's static mode still emits a DLL export directive in its COFF object.
+    run([source.parent / "bin64/pkgdata.exe", "-m", "common", "-p", "icudt77l",
+         "-s", generated, "-d", scratch, "-T", scratch, scratch / "icudata.lst"],
+        work, env, log)
+    data = scratch / "icudt77l.dat"
+    if not data.is_file() or data.is_symlink():
+        raise ValueError("ICU source data packaging did not produce its common package")
+    run([source.parent / "bin64/genccode.exe", "-o", "--skip-dll-export", "-e", "icudt77",
+         "-c", "x64", "-f", "icudata", "-d", scratch, data], work, env, log)
+    object_file = scratch / "icudata.obj"
+    if not object_file.is_file() or object_file.is_symlink():
+        raise ValueError("ICU genccode did not produce its non-exporting static data object")
+    run(["lib.exe", "/NOLOGO", "/OUT:" + str(installation / "lib/icudt.lib"), object_file],
+        work, env, log)
+
+
 def windows_build(source, installation, work, filter_file, env, log, jobs):
     """Native VS2022 bootstrap tools, source databuilder, then /MT static libraries."""
     # ICU's supported Windows data renderer forms unquoted shell command lines.
@@ -155,12 +200,7 @@ def windows_build(source, installation, work, filter_file, env, log, jobs):
     if filter_file:
         command.extend(["--filter_file", filter_file])
     run(command, source / "data", data_env, log)
-    pkg = source.parent / "bin64/pkgdata.exe"
-    run([pkg, "-m", "static", "-e", "icudt77", "-p", "icudt77l", "-L", "icudt",
-         "-a", "X64", "-s", generated, "-d", installation / "lib",
-         "-T", scratch, scratch / "icudata.lst"], work, data_env, log)
-    # Native MSVC pkgdata prepends 's' to static icudt library names.
-    (installation / "lib/sicudt.lib").rename(installation / "lib/icudt.lib")
+    windows_data_library(source, installation, generated, scratch, work, data_env, log)
     # The global property overrides DLL project type; late import overrides /MD.
     props = work / "static.props"
     props.write_text(

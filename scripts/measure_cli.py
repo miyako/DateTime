@@ -5,6 +5,7 @@ import json
 import math
 import os
 from pathlib import Path
+import re
 import statistics
 import subprocess
 import time
@@ -30,14 +31,26 @@ def dependencies(executable, target):
     return {"status": "passed", "command": command, "libraries": names, "raw": output}
 
 
+def exported_icu_symbols(output, target):
+    rows = (r"^\s*\d+\s+[0-9a-fA-F]+\s+[0-9a-fA-F]{8,16}\s+(\S+)" if target == "windows-x64"
+            else r"^\s*0[xX][0-9a-fA-F]+\s+(\S+)")
+    names = re.findall(rows, output, re.MULTILINE)
+    pattern = re.compile(
+        r"^(?:_?icudt\d+|_?u(?:[a-z0-9]+)?_\w+_\d+(?:$|@)|_?ucal_|_?udata_|_?u_str|"
+        r"_{0,2}ZN\d+icu(?:_\d+)?(?:\d|E))|@icu(?:_\d+)?@")
+    return [name for name in names if pattern.search(name)]
+
+
 def exports(executable, target):
     command = (["dumpbin.exe", "/exports", str(executable)] if target == "windows-x64"
                else ["dyld_info", "-exports", str(executable)])
     result = subprocess.run(command, check=True, capture_output=True, text=True)
     # The standalone program has no reason to export ICU's API or data symbols.
-    import re
-    if re.search(r"\b_?(?:ucal_|udata_|u_str|icudt77|_?ZN.*icu)", result.stdout):
-        raise ValueError("ICU symbols are exported by the executable")
+    if not result.stdout.strip():
+        raise ValueError("export inspection returned no output")
+    names = exported_icu_symbols(result.stdout, target)
+    if names:
+        raise ValueError("ICU symbols are exported by the executable: " + ", ".join(names))
     return {"status": "passed", "command": command, "raw": result.stdout}
 
 

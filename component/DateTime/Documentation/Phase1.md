@@ -6,6 +6,9 @@ C++17, ICU **77.1**, Unicode **16.0**, timezone data **2025a**. Source and sourc
 data archives are independently pinned by SHA512 in `cli/icu-dependency.json`,
 verified against upstream `SHASUM512.txt`. The build discards the prebuilt data
 directory and rebuilds from verified source data using ICU's supported filter.
+Transient HTTP 408/429/5xx and socket timeouts have at most four attempts with
+1/2/4-second backoff. Exhaustion is a failure; checksum or extraction safety
+failures are never retried, bypassed or repinned.
 The bundled `ICU-LICENSE.txt` retains the upstream Unicode-3.0 license and
 third-party notices. Tool4d is not bundled.
 
@@ -22,6 +25,11 @@ tested, as was injected invalid embedded data (an explicit failure, not fallback
 Apple system libc++ and libSystem remain dynamic system dependencies, not
 bundled ICU. Windows uses native VS2022 x64 and static CRT; native DLL inspection
 is an independent mandatory build gate. No native Windows ARM64 support.
+For Windows, the filtered source data is packaged, converted to a COFF object
+with ICU `genccode --skip-dll-export`, and archived with `lib.exe`. ICU 77.1
+`pkgdata -m static` otherwise requests a DLL export for `icudt77_dat`; static
+linkage alone does not make this symbol private. Native export inspection
+rejects actual exported ICU symbols rather than skipping that requirement.
 
 ## Actual ARM64 full/static versus tailored/static comparison
 

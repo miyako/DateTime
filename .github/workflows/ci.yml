@@ -109,19 +109,6 @@ jobs:
               stream.write("DATETIME_TEST_EXECUTABLE=" + str(executable) + "\n")
       - name: Selected CLI contract tests against the built executable
         run: python -m unittest discover -s tests -p test_cli.py -v
-      - name: Compare full and tailored static ICU footprint and process overhead
-        if: matrix.language == 'cpp'
-        run: python scripts/measure_cli.py --root . --executable "$DATETIME_TEST_EXECUTABLE" --compare --samples 5 --warmups 2 --counts 1 16 256
-        shell: bash
-      - uses: actions/upload-artifact@v4
-        if: matrix.language == 'cpp'
-        with:
-          name: icu-measure-${{ matrix.target }}
-          path: |
-            build/measure/${{ matrix.target }}/measurement.json
-            build/measure/${{ matrix.target }}/*/datetime-executable.zip
-          if-no-files-found: error
-          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: cli-${{ matrix.target }}
@@ -131,7 +118,19 @@ jobs:
             !build/${{ matrix.target }}/cmake/**
           if-no-files-found: error
           retention-days: 7
-
+      - name: Compare full and tailored static ICU footprint and process overhead
+        if: matrix.language == 'cpp'
+        run: python scripts/measure_cli.py --root . --executable "$DATETIME_TEST_EXECUTABLE" --compare --samples 5 --warmups 2 --counts 1 16 256
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: matrix.language == 'cpp' && !cancelled()
+        with:
+          name: icu-measure-${{ matrix.target }}
+          path: |
+            build/measure/${{ matrix.target }}/measurement.json
+            build/measure/${{ matrix.target }}/*/datetime-executable.zip
+          if-no-files-found: error
+          retention-days: 7
   assembly:
     needs: [configuration, native]
     if: needs.configuration.outputs.initialized == 'true'
