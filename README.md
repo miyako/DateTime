@@ -119,6 +119,47 @@ private-symbol checks. Full/unfiltered comparisons run in separate optional
 baseline jobs; a baseline failure is recorded as incomplete measurement evidence,
 not a production success or a reason to bypass any package/host gate.
 
+## CI and Publish
+
+The two Actions workflows are **CI** and **Publish**, following
+[miyako/4d-component-template#4](https://github.com/miyako/4d-component-template/pull/4).
+These workflow changes must be merged to the default branch before the new
+Publish button is available. CI can run on a selected development branch;
+Publish runs on **main** only. Do not precreate a release tag.
+
+Set the repository Actions **variable** `FOURD_ENABLED=true` to enable hosted
+4D acceptance. With it enabled, **CI → Run workflow** builds native resources,
+runs source and compiled-host acceptance, and retains **compiled-component**
+with `DateTime.zip` and adjacent acceptance evidence for 30 days. This is
+inspection without publication; it does not create a tag or GitHub release.
+Diagnostics are retained separately, including when a host check fails.
+
+For an authorized release, open **Publish → Run workflow**, select **main**,
+and choose **mode**: **patch** (default), **minor**, or **major**. No tag entry
+is needed. The workflow bumps from the highest stable version tag, or from the
+configured version when none exists; for example, an initial configured
+`0.1.0` becomes `0.1.1` with patch. It synchronizes the component/CLI version,
+contracts and current examples, commits only registered version files to main,
+then builds and accepts that exact commit. Branch protection must permit that
+non-force bot commit; no personal token or protection bypass is used.
+
+Only after final package/host and transferred-asset verification does Publish
+create the new tag and release using GitHub's built-in token. It checks remote
+tag/release collisions before the version commit and again before publication.
+A failed build leaves its version commit, not a release tag. A same-mode retry
+can reuse that candidate; an existing tag or release is never overwritten.
+
+Unsigned publication is the default. Select **require_apple_signing** for
+signed/notarized macOS assets, or list the next exact version in
+`release-policy.json.apple_notarized_versions`; a manual request cannot weaken
+that policy. The signed path signs an isolated compiled component, notarizes
+and staples a DMG, repacks `DateTime.zip` from the final mounted DMG, and reruns
+the exact final ZIP's compiled-host checks. Missing credentials or failed
+signing never fall back to unsigned. See [AGENTS.md](AGENTS.md#8-icons-licensing-and-optional-signing)
+for the seven Apple secret requirements; the local six-secret provisioning
+helper does not supply `CODESIGN_APPLE_ID`. Windows Authenticode is not included.
+Adding secrets alone neither enables signing nor authorizes a release.
+
 ## Install and deployment
 
 After an authorized future release, add GitHub dependency `miyako/DateTime`

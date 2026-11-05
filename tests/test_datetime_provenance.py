@@ -44,7 +44,9 @@ class DateTimeProvenanceTests(unittest.TestCase):
             for relative in ("scripts/build_icu.py", "scripts/build_cli.py",
                              "scripts/build_provenance.py", "scripts/measure_cli.py",
                              "tests/cli-contract.json", ".github/workflows/ci.yml",
-                             ".github/actions/cpp-environment/action.yml"):
+                             ".github/actions/cpp-environment/action.yml",
+                             ".github/workflows/publish.yml", "scripts/bump_release.py",
+                             "release-policy.json"):
                 path = root / relative
                 path.write_text("original build input")
                 record(root, "macos-arm64", executable, False, "synthetic")

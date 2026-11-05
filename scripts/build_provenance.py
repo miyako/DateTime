@@ -15,7 +15,8 @@ def source_digest(root):
     files += [root / relative for relative in (
         "scripts/build_cli.py", "scripts/build_icu.py", "scripts/build_provenance.py",
         "scripts/measure_cli.py", "tests/cli-contract.json", ".github/workflows/ci.yml",
-        ".github/actions/cpp-environment/action.yml",
+        ".github/actions/cpp-environment/action.yml", ".github/workflows/publish.yml",
+        "scripts/bump_release.py", "release-policy.json",
     ) if (root / relative).is_file()]
     files += sorted(path for path in (root / "cli").rglob("*")
                     if path.is_file() and path.relative_to(root / "cli").parts[0] not in {"target", "build"})

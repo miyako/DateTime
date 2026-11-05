@@ -37,9 +37,22 @@ class MeasurementScopeTests(unittest.TestCase):
         assembly = self.jobs["assembly"]
         self.assertIn("needs: [configuration, native]", assembly)
         self.assertNotIn("needs: [configuration, baseline]", assembly)
-        for gate in ("scripts/ci_config.py assemble", "scripts/test_4d.py",
-                     "scripts/compile_component.py", "unpack_for_test"):
+        for gate in ("scripts/ci_config.py assemble", "scripts/accept_hosted.py"):
             self.assertIn(gate, assembly)
+
+    def test_branch_inspection_retains_compiled_package_and_failure_evidence(self):
+        assembly = self.jobs["assembly"]
+        self.assertIn("name: compiled-component", assembly)
+        self.assertIn("dist/*.acceptance.json", assembly)
+        self.assertIn("name: component-acceptance-diagnostics", assembly)
+        self.assertIn("if: always() && vars.FOURD_ENABLED == 'true'", assembly)
+        self.assertIn("!inputs.release_call", assembly)
+        self.assertNotIn("gh release", assembly)
+
+    def test_ci_does_not_run_on_release_tag_pushes(self):
+        workflow = (ROOT / ".github/workflows/ci.yml").read_text()
+        self.assertIn("push:\n    branches: ['**']", workflow)
+        self.assertNotIn("tags:", workflow)
 
     def test_shared_windows_environment_does_not_log_or_copy_github_auth(self):
         action = (ROOT / ".github/actions/cpp-environment/action.yml").read_text()
