@@ -467,29 +467,70 @@ failed status/phase reports. This is a starter identity/wiring regression,
 `--tag` validates package/version identity; it does not create/push/publish a tag.
 For approved hosted publication only, set Actions **variable**
 `FOURD_ENABLED=true`; `TOOL4D_URL` / `TOOL4D_SHA256` are optional paired overrides
-of the approved public `package.json.tool` pin, not required secrets. Push the matching
-`v<version>` tag. Release jobs build same-tag native resources, compile after
+of the approved public `package.json.tool` pin, not required secrets. Use manual
+Publish on main with patch/minor/major; it commits synchronized version metadata
+and builds that exact SHA before creating its tag/release. Jobs compile after
 assembly and host-test the unpacked package before publishing `<repository>.zip`.
-Only publication receives built-in `GITHUB_TOKEN` write permission; no personal
-token/version-bot commit is required.
+Only the version and publication jobs receive built-in `GITHUB_TOKEN` write
+permission; no personal token is required. Branch rules must permit the bot's
+non-force main commit; rejection fails closed rather than bypassing protection.
 
-### Manual Actions dispatch and existing-tag release
+### Two workflows: CI and manual Publish
 
 After the dispatch-capable workflow is merged to the **default branch**, open
 **Actions → CI → Run workflow** and select a branch for ordinary validation.
 `FOURD_ENABLED` still controls optional hosted 4D steps; CLI-only green is not
 compiled-host green.
 
-**Actions → Release compiled component → Run workflow** requires
-`version_tag`, an **already existing** `v<SemVer>` tag matching the initialized
-repository's `template.json.version` / `package.json.version`. It creates no
-tag. The gate resolves/peels that tag to a commit SHA, validates source at that
-SHA, and all reusable native CI, assembly, compilation and publication jobs use
-that exact SHA—not the selected UI branch. Packaging receives the normalized
-tag explicitly. Publication refreshes and verifies the tag has not moved, uses
-`--verify-tag`, and remains blocked by compilation or final host failure.
+Initialized branch/PR/manual CI with `FOURD_ENABLED=true` retains
+**compiled-component** for 30 days: the accepted `dist/<repository>.zip` and
+adjacent `.acceptance.json` bind the ZIP hash/size, revision, native manifests,
+tool4d identity and source/compiler/final compiled-host evidence. Download it
+from the run's **Artifacts** without publishing a release. Separate
+**component-acceptance-diagnostics** preserves completed reports on failure.
+`scripts/accept_hosted.py --repository OWNER/REPOSITORY --tool4d PATH` consumes
+all three same-revision native artifacts/manifests (each `execution:"passed"`),
+reassembles and runs the actual source/compile/package/final-host pipeline.
+It never publishes or marks unexecuted Intel/Windows 4D as passed. Its default
+inspection path is unsigned; release signing uses the explicit
+`--require-apple-signing` path documented below.
+
+Keep exactly `.github/workflows/ci.yml` (**CI**) and `publish.yml` (**Publish**).
+**Actions → Publish → Run workflow** accepts **mode** patch/minor/major, default
+patch, and requires **main**. It does not accept or require an existing tag.
+`bump_release.py next --mode MODE` uses the highest stable `vX.Y.Z` tag, ignoring
+prereleases, or the configured version if no stable tag exists; it bumps that
+base (initial `0.1.0` becomes `0.1.1` with patch). Validate synchronized metadata
+and reject downgrades before writes. `apply --version X.Y.Z --stage` updates
+only the validated configured version surfaces: package/template,
+selected-language version declarations, current CLI/class docs and version
+contracts. It must not rewrite dependencies, history or arbitrary feature data.
+Feature adaptations adding version fields must extend this bounded registry.
+
+Publish uses concurrency group `publish`, `cancel-in-progress:false`, checks
+tag/release availability, commits version updates to main and passes that full
+SHA to reusable CI and all assembly/compiler/signing/publication checkouts.
+CI handles branch pushes, PRs and dispatch, never tags; the bot's `GITHUB_TOKEN`
+commit does not recursively trigger CI. Publish explicitly calls reusable CI
+with `release_call:true` to avoid a second optional compiled inspection.
+The same input commit must bind all native manifests and acceptance evidence.
+Signing policy is read at the version commit SHA. Manual
+`require_apple_signing` can escalate an unsigned version but cannot downgrade
+a policy-required signed version.
+Only after compilation and exact final-host success does `release_assets.py`
+verify downloaded ZIP/DMG/proof bytes, accepted hashes/sizes, revision, native
+manifests and full source/final-host contracts. It then verifies main ancestry,
+checks remote tag/release collisions again, atomically creates a new
+`vX.Y.Z` tag at the accepted SHA and invokes `gh release create --verify-tag`
+with a literal validated asset list. GitHub's create-ref API rejects collisions
+even at the same SHA; no force/update/delete operation is used.
+No automatic tag-push release trigger exists.
+Failed builds leave the main version commit, not a tag/release. Retrying with
+the same mode can reuse that candidate when the stable base is unchanged.
+A failure after tag push retains the tag and requires explicit inspection;
+never delete/force a tag, overwrite a release or pretend a failed stage passed.
 Do not manually dispatch publication or create a tag without user permission.
-The new workflow is not available in the default template before its PR merges.
+The new workflow is not available on the default branch before its changes merge.
 
 ## 7. Report evidence, not assumptions
 
@@ -556,9 +597,10 @@ For a requested local implementation, finish the feature, replace every
 greeting-specific surface, run exact feature/error tests, validate licenses and
 resources, compile fresh, and load the **exact final ZIP's** unpacked component.
 Report unsupported/unavailable checks as `not_run`; local success remains
-`release_ready:false`. Approved publication additionally requires the existing
-matching tag, all required native artifact/tests, hosted 4D opt-in and the final
-package-host gate. Signing is optional for the existing unsigned release.
+`release_ready:false`. Approved publication additionally requires the synchronized
+version commit, all required native artifact/tests, hosted 4D opt-in and the final
+package-host gate before tag creation. Signing is optional by default; a listed
+version or explicit signed dispatch requires every signing/notarization gate.
 
 The final handoff must identify the repository/namespace/class/CLI/language,
 revision and input provenance, exact commands/results, tool versions, stable ZIP
@@ -617,21 +659,48 @@ Never claim this deterministic file-presence check is a legal audit.
 
 Signing is not a prerequisite for unsigned development/package acceptance.
 Gatekeeper/quarantine may still block unsigned downloads; do not add a runtime
-trust bypass. If the user explicitly opts into signing, store certificates and
-passwords in **secrets only**, use minimum entitlements, fail closed, require
-notarization `Accepted`, clean temporary keychains even on failure and test the
-final signed compiled package. Bare CLI executables cannot be stapled; a signed
-container/Apple `Contents/` layout requires deliberate packaging changes.
+trust bypass. The implemented signing path stores credentials in **secrets only**,
+uses hardened runtime/timestamp verification, fails closed, requires notarization
+`Accepted`, cleans temporary keychains/certificates and owned mounts even on
+failure, and tests the exact final signed ZIP's unpacked compiled component.
+Bare CLI executables are not stapled: the DMG is the notarized/stapled container.
+The ZIP is repacked from its actual final mounted component, preserving the
+existing `.4dbase` layout without introducing an application `Contents/` tree.
 
-### Seven Apple secrets: registration is not implementation
+### Version policy and seven Apple secrets
 
-The current `.github/workflows/release.yml` is **unsigned** and consumes **none**
-of these seven secrets. Merely registering them does **not** enable signing or
-notarization. Implementing a signing workflow is separate, explicitly approved
-scope; this playbook documents credential types, not an implemented integration.
-No secret below is required by the free local compiler or unsigned acceptance.
+`release-policy.json` is independent of template identity and defaults to
+`{"schema":1,"apple_notarized_versions":[]}`. List exact component versions
+without `v` to require signed releases; commit the policy before running Publish
+for that next version. A missing policy or unlisted version means unsigned;
+malformed policy fails closed. Manual `require_apple_signing` and the helper's
+`--require-apple-signing` can only escalate, never downgrade policy.
+`scripts/sign_release.py policy --root .` emits `apple_signing` without accessing
+secrets; the workflow passes credentials only to the policy-true stage.
+Registering secrets does not change policy. No secret below is required by the
+free local compiler, unsigned CI inspection or unsigned release.
 
-For a future approved integration, register private values in the **destination**
+The signed release runs the same verified native assembly, source-host,
+compilation and deterministic unsigned packaging pipeline, then tests the
+unsigned compiled ZIP. `sign_release.py sign --root . --require-apple-signing`
+requires checkout HEAD to match candidate `RELEASE_SHA`/`RELEASE_TAG`, validates
+compiler input/output provenance and reproduces the fresh unsigned ZIP before
+signing an isolated copy. It signs the universal CLI and native Mach-O Libraries,
+verifies Developer ID/team/runtime/timestamp, signs a DMG, requires actual
+notarization JSON `Accepted`, staples and validates it, and rebuilds the final ZIP
+from that mounted final DMG. Original compiler outputs and markers are not edited.
+The source-host gate is enforced by the orchestrator.
+
+`accept_hosted.py --require-apple-signing` reruns actual host assertions against
+the final ZIP after signing. It revalidates original compiler provenance and
+binds all final asset hashes, refusing changes during host testing. Stable outputs
+are `dist/<repository>.zip`, `.dmg`, `-signing.json` and `.acceptance.json`; evidence
+distinguishes source/compiler/unsigned-host/signing/final-host stages. Signing
+timestamps and notarization are not reproducibility promises. Windows
+Authenticode is not implemented. A successful CLI/notary check does not prove
+native Intel/Windows 4D loading or Dependency manager installation.
+
+For approved signed releases, register private values in the **destination**
 repository under **Settings → Secrets and variables → Actions → Secrets → New
 repository secret**. Template creation does not inherit repository secrets or
 variables. Never place certificates/private keys/passwords in source, workflow

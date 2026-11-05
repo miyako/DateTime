@@ -1,10 +1,14 @@
 {
   "schema": 1,
   "cases": [
-    {"args": ["--version"], "exitCode": 0, "stdout": {"protocol": 1, "version": "$VERSION"}, "stderr": ""},
-    {"args": ["greet", "--name", "世界 café"], "exitCode": 0, "stdout": {"protocol": 1, "message": "Hello, 世界 café!"}, "stderr": ""},
-    {"args": ["greet", "--name", "quote\" slash\\\n"], "exitCode": 0, "stdout": {"protocol": 1, "message": "Hello, quote\" slash\\\n!"}, "stderr": ""},
-    {"args": ["greet", "--name", ""], "exitCode": 2, "stdout": "", "stderr": {"protocol": 1, "error": {"code": "invalid_arguments", "message": "expected greet --name <non-empty UTF-8 name> or --version"}}},
-    {"args": ["unknown"], "exitCode": 2, "stdout": "", "stderr": {"protocol": 1, "error": {"code": "invalid_arguments", "message": "expected greet --name <non-empty UTF-8 name> or --version"}}}
+    {"args":["--version"],"exitCode":0,"stdout":{"protocol":1,"version":"$VERSION"},"stderr":""},
+    {"args":["convert","--instant","2026-01-15T12:00:00Z","--zone","Europe/Paris"],"exitCode":0,"stdout":{"protocol":1,"instant":"2026-01-15T12:00:00.000Z","zone":"Europe/Paris","local":"2026-01-15T13:00:00.000+01:00","offsetSeconds":3600},"stderr":""},
+    {"args":["convert","--instant","2026-07-15T12:00:00Z","--zone","Europe/Paris"],"exitCode":0,"stdout":{"protocol":1,"instant":"2026-07-15T12:00:00.000Z","zone":"Europe/Paris","local":"2026-07-15T14:00:00.000+02:00","offsetSeconds":7200},"stderr":""},
+    {"args":["convert","--instant","2026-01-15T12:00:00Z","--zone","America/New_York"],"exitCode":0,"stdout":{"protocol":1,"instant":"2026-01-15T12:00:00.000Z","zone":"America/New_York","local":"2026-01-15T07:00:00.000-05:00","offsetSeconds":-18000},"stderr":""},
+    {"args":["convert","--instant","2026-07-15T12:00:00Z","--zone","America/New_York"],"exitCode":0,"stdout":{"protocol":1,"instant":"2026-07-15T12:00:00.000Z","zone":"America/New_York","local":"2026-07-15T08:00:00.000-04:00","offsetSeconds":-14400},"stderr":""},
+    {"args":["convert","--instant","2026-01-15T17:45:00.123+05:45","--zone","Asia/Kathmandu"],"exitCode":0,"stdout":{"protocol":1,"instant":"2026-01-15T12:00:00.123Z","zone":"Asia/Kathmandu","local":"2026-01-15T17:45:00.123+05:45","offsetSeconds":20700},"stderr":""},
+    {"args":["convert","--instant","bad","--zone","Etc/UTC"],"exitCode":2,"stdout":"","stderrPattern":"\\{\"protocol\":1,\"error\":\\{\"code\":\"invalid_instant\",\"message\":\"[^\"\\n]+\"\\}\\}\\n"},
+    {"args":["convert","--instant","2026-01-15T12:00:00Z","--zone","Not/A_Zone"],"exitCode":2,"stdout":"","stderrPattern":"\\{\"protocol\":1,\"error\":\\{\"code\":\"invalid_zone\",\"message\":\"[^\"\\n]+\"\\}\\}\\n"},
+    {"args":["batch","--item","2026-01-15T12:00:00Z","Asia/Kathmandu","--item","bad","Etc/UTC"],"exitCode":0,"stdoutPattern":"\\{\"protocol\":1,\"results\":\\[\\{\"ok\":true,\"value\":\\{\"instant\":\"2026-01-15T12:00:00.000Z\",\"zone\":\"Asia/Kathmandu\",\"local\":\"2026-01-15T17:45:00.000\\+05:45\",\"offsetSeconds\":20700\\}\\},\\{\"ok\":false,\"error\":\\{\"code\":\"invalid_instant\",\"message\":\"[^\"\\n]+\"\\}\\}\\]\\}\\n","stderr":""}
   ]
 }

@@ -1,208 +1,119 @@
+"""Exercise the configured native executable; ICU is built once, never per test."""
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 
-
 ROOT = Path(__file__).resolve().parents[1]
-STARTERS = ROOT / "cli-starters"
-ERROR = (
-    b'{"protocol":1,"error":{"code":"invalid_arguments","message":'
-    b'"expected greet --name <non-empty UTF-8 name> or --version"}}\n'
-)
+sys.path.insert(0, str(ROOT / "scripts"))
+from build_cli import build, native_target, smoke_test
 
 
-def json_line(value):
-    return (json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
-
-
-class ContractTests:
+class CppCLI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        selected = os.environ.get("TEST_CLI_LANGUAGE")
-        if selected not in (None, "none", "go", "rust", "cpp"):
-            raise RuntimeError("TEST_CLI_LANGUAGE must be none, go, rust, or cpp")
-        if selected == "none":
-            raise unittest.SkipTest("CLI toolchains disabled by TEST_CLI_LANGUAGE=none")
-        if selected is not None and selected != cls.language:
-            raise unittest.SkipTest("TEST_CLI_LANGUAGE selects " + selected)
+        if os.environ.get("TEST_CLI_LANGUAGE") == "none":
+            raise unittest.SkipTest("native CLI execution explicitly disabled")
+        if os.environ.get("TEST_CLI_LANGUAGE") not in (None, "cpp"):
+            raise RuntimeError("DateTime requires the selected C++ toolchain")
+        configured = os.environ.get("DATETIME_TEST_EXECUTABLE")
+        cls.executable = Path(configured).resolve() if configured else build(ROOT, native_target())
+        if not cls.executable.is_file():
+            raise RuntimeError("native test executable does not exist")
 
-        config_path = ROOT / "template.json"
-        config = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
-        initialized = config.get("initialized", False) or (ROOT / "cli").is_dir()
-        if initialized:
-            configured = config.get("language")
-            if configured not in ("go", "rust", "cpp"):
-                raise RuntimeError("initialized template.json must configure a CLI language")
-            if configured != cls.language:
-                if selected is not None:
-                    raise RuntimeError(
-                        "TEST_CLI_LANGUAGE selects " + selected
-                        + " but template.json configures " + configured
-                    )
-                raise unittest.SkipTest("initialized template selects " + configured)
-            original = ROOT / "cli"
-            executable_name = config["cli"]
-        else:
-            original = STARTERS / cls.language
-            executable_name = "component-cli"
-        if not original.is_dir():
-            raise RuntimeError("missing CLI source directory: " + str(original))
+    def run_cli(self, args, status=0, env=None):
+        result = subprocess.run([str(self.executable), *args], capture_output=True, timeout=10, env=env)
+        self.assertEqual(result.returncode, status, result.stderr)
+        if status == 0:
+            self.assertEqual(result.stderr, b"")
+            self.assertTrue(result.stdout.endswith(b"\n"))
+            self.assertEqual(result.stdout.count(b"\n"), 1)
+            return json.loads(result.stdout)
+        self.assertEqual(result.stdout, b"")
+        error = json.loads(result.stderr)
+        self.assertEqual(error["protocol"], 1)
+        self.assertTrue(error["error"]["message"])
+        return error
 
-        def unavailable(message):
-            if selected is not None:
-                raise RuntimeError("selected " + cls.language + " toolchain unavailable: " + message)
-            raise unittest.SkipTest("unavailable toolchain: " + message)
+    def convert(self, instant, zone, status=0, env=None):
+        return self.run_cli(["convert", "--instant", instant, "--zone", zone], status, env)
 
-        missing = [tool for tool in cls.tools if shutil.which(tool) is None]
-        if missing:
-            unavailable(", ".join(missing))
-        compiler = None
-        if cls.language == "cpp" and os.name != "nt":
-            compiler = next(
-                (shutil.which(tool) for tool in ("c++", "g++", "clang++") if shutil.which(tool)),
-                None,
-            )
-            if compiler is None:
-                unavailable("C++17 compiler")
-        scratch = tempfile.TemporaryDirectory(prefix=".cli-test path ", dir=Path(__file__).parent)
-        cls.addClassCleanup(scratch.cleanup)
-        root = Path(scratch.name)
-        source = root / "source"
-        shutil.copytree(original, source)
-        environment = os.environ.copy()
-        executable_name += ".exe" if os.name == "nt" else ""
-        execution_directory = root / "executables with spaces"
-        execution_directory.mkdir()
-        cls.executable = execution_directory / executable_name
-        if cls.language == "go":
-            environment.pop("GOOS", None)
-            environment.pop("GOARCH", None)
-            environment["CGO_ENABLED"] = "0"
-            environment.update(
-                GOCACHE=str(root / "go-cache"),
-                GOPATH=str(root / "go-path"),
-                GOTOOLCHAIN="local",
-                GOPROXY="off",
-                GOSUMDB="off",
-            )
-            commands = [["go", "build", "-o", str(cls.executable), "."]]
-        elif cls.language == "rust":
-            environment.pop("CARGO_BUILD_TARGET", None)
-            environment["CARGO_TARGET_DIR"] = str(root / "target")
-            built_executable = root / "target" / "release" / executable_name
-            commands = [["cargo", "build", "--release", "--offline", "--locked"]]
-        else:
-            build = root / "build"
-            built_executable = build / executable_name
-            commands = [
-                ["cmake", "-S", str(source), "-B", str(build),
-                 "-DCMAKE_BUILD_TYPE=Release",
-                 *([] if os.name == "nt" else ["-DCMAKE_CXX_COMPILER=" + compiler]),
-                 *(["-A", "x64"] if os.name == "nt" else [])],
-                ["cmake", "--build", str(build), "--config", "Release"],
-            ]
-        for command in commands:
-            result = subprocess.run(
-                command, cwd=source, env=environment, capture_output=True, timeout=180
-            )
-            if result.returncode:
-                raise RuntimeError(
-                    "build failed: " + repr(command) + "\n"
-                    + result.stdout.decode("utf-8", errors="replace")
-                    + result.stderr.decode("utf-8", errors="replace")
-                )
-        if cls.language == "cpp" and not built_executable.exists():
-            built_executable = build / "Release" / executable_name
-        if cls.language != "go":
-            shutil.copy2(built_executable, cls.executable)
+    def test_native_smoke_contract(self):
+        smoke_test(self.executable, "0.1.0", ROOT / "tests/cli-contract.json")
 
-    def assert_result(self, arguments, status, stdout, stderr):
-        result = subprocess.run(
-            [os.fspath(self.executable), *arguments], capture_output=True, timeout=10
+    def test_offsets_and_day_rollover(self):
+        self.assertEqual(self.convert("2026-01-15T17:45:00.12+05:45", "Asia/Kathmandu"), {
+            "protocol": 1, "instant": "2026-01-15T12:00:00.120Z", "zone": "Asia/Kathmandu",
+            "local": "2026-01-15T17:45:00.120+05:45", "offsetSeconds": 20700})
+        self.assertEqual(self.convert("2026-01-01T00:00:00Z", "America/New_York")["local"],
+                         "2025-12-31T19:00:00.000-05:00")
+
+    def test_dst_forward_conversion(self):
+        vectors = (
+            ("2026-03-08T06:59:59.999Z", "America/New_York", "2026-03-08T01:59:59.999-05:00"),
+            ("2026-03-08T07:00:00Z", "America/New_York", "2026-03-08T03:00:00.000-04:00"),
+            ("2026-11-01T05:30:00Z", "America/New_York", "2026-11-01T01:30:00.000-04:00"),
+            ("2026-11-01T06:30:00Z", "America/New_York", "2026-11-01T01:30:00.000-05:00"),
         )
-        self.assertEqual(result.returncode, status)
-        self.assertEqual(result.stdout, stdout)
-        self.assertEqual(result.stderr, stderr)
+        for instant, zone, local in vectors:
+            with self.subTest(instant=instant):
+                self.assertEqual(self.convert(instant, zone)["local"], local)
 
-    def test_version(self):
-        self.assert_result(["--version"], 0, b'{"protocol":1,"version":"0.1.0"}\n', b"")
-
-    def test_name(self):
-        self.assertIn(" ", str(self.executable))
-        name = '😀 "quoted" \\backslash; \'$()\''
-        self.assert_result(
-            ["greet", "--name", name], 0,
-            json_line({"protocol": 1, "message": "Hello, " + name + "!"}), b"",
+    def test_strict_instants(self):
+        invalid = (
+            "", "2026-02-30T12:00:00Z", "2026-01-15T24:00:00Z", "2026-01-15T12:60:00Z",
+            "2026-01-15T12:00:60Z", "2026-01-15T12:00:00.1234Z",
+            "2026-01-15T12:00:00.Z", "2026-01-15T12:00:00", "2026-01-15t12:00:00z",
+            "2026-01-15T12:00:00-00:00", "2026-01-15T12:00:00+24:00",
+            "2026-01-15T12:00:00+00:60", "0000-01-01T00:00:00Z", "10000-01-01T00:00:00Z",
+            " 2026-01-15T12:00:00Z", "2026-01-15T12:00:00Z ", "1900-02-29T00:00:00Z",
         )
+        for instant in invalid:
+            with self.subTest(instant=instant):
+                self.assertEqual(self.convert(instant, "Etc/UTC", 2)["error"]["code"], "invalid_instant")
+        self.assertEqual(self.convert("2000-02-29T00:00:00Z", "Etc/UTC")["instant"],
+                         "2000-02-29T00:00:00.000Z")
 
-    def test_names(self):
-        names = [
-            "World", "two words", " ", " leading and trailing ",
-            "世界 café 😀", 'a"b\\c', "line\nbreak", "\t\r\b\f",
-            "".join(chr(value) for value in range(1, 32)),
-            "<>&/\u2028\u2029", "\u007f\u0080\u07ff\u0800\uffff\U0010ffff",
-            "--version", "$(echo not-executed); `echo nope`",
-        ]
-        for name in names:
-            with self.subTest(name=name):
-                self.assert_result(
-                    ["greet", "--name", name], 0,
-                    json_line({"protocol": 1, "message": "Hello, " + name + "!"}), b"",
-                )
+    def test_range_boundaries_are_not_normalized_outside_contract(self):
+        for instant in ("0001-01-01T00:00:00+01:00", "9999-12-31T23:59:59-01:00"):
+            self.assertEqual(self.convert(instant, "Etc/UTC", 2)["error"]["code"], "out_of_range")
+        self.assertEqual(self.convert("9999-12-31T23:59:59Z", "Asia/Kathmandu", 2)["error"]["code"],
+                         "out_of_range")
 
-    def test_invalid_arguments(self):
-        cases = [
-            [], [""], ["unknown"], ["greet"], ["greet", "--name"],
-            ["greet", "--name", ""], ["greet", "World"],
-            ["greet", "--name=World"], ["greet", "--unknown", "World"],
-            ["greet", "--name", "World", "--name", "Again"],
-            ["greet", "--name", "World", "extra"],
-            ["--name", "World", "greet"], ["greet", "--version"],
-            ["--version", "extra"], ["--version", "--version"],
-            ["greet", "--name", "World", "--version"],
-            ["GREET", "--name", "World"], ["greet", "--Name", "World"],
-        ]
-        for arguments in cases:
-            with self.subTest(arguments=arguments):
-                self.assert_result(arguments, 2, b"", ERROR)
+    def test_unknown_and_custom_zones_error(self):
+        for zone in ("Not/A_Zone", "Europe/paris", "GMT+05:45", "", "Europe/Paris ", "日本語"):
+            with self.subTest(zone=zone):
+                self.assertEqual(self.convert("2026-01-15T12:00:00Z", zone, 2)["error"]["code"],
+                                 "invalid_zone")
 
-    @unittest.skipUnless(os.name == "posix", "raw byte arguments require POSIX")
+    def test_batch_order_errors_and_bound(self):
+        args = ["batch", "--item", "2026-01-15T12:00:00Z", "Asia/Kathmandu",
+                "--item", "bad", "Etc/UTC", "--item", "2026-01-15T12:00:00Z", "Not/A_Zone"]
+        results = self.run_cli(args)["results"]
+        self.assertEqual(len(results), 3)
+        self.assertEqual(results[0]["value"]["offsetSeconds"], 20700)
+        self.assertEqual(results[1]["error"]["code"], "invalid_instant")
+        self.assertEqual(results[2]["error"]["code"], "invalid_zone")
+        pair = ["--item", "2026-01-15T12:00:00Z", "Etc/UTC"]
+        self.assertEqual(len(self.run_cli(["batch", *pair * 256])["results"]), 256)
+        self.assertEqual(self.run_cli(["batch", *pair * 257], 2)["error"]["code"], "invalid_arguments")
+
+    def test_bundled_data_and_host_zone_independence(self):
+        with tempfile.TemporaryDirectory(prefix="empty ICU data ") as directory:
+            environment = dict(os.environ, ICU_DATA=directory, TZ="Pacific/Honolulu")
+            first = self.convert("2026-01-15T12:00:00Z", "Europe/Paris", env=environment)
+            environment["TZ"] = "Asia/Tokyo"
+            self.assertEqual(first, self.convert("2026-01-15T12:00:00Z", "Europe/Paris", env=environment))
+
+    def test_literal_argument_round_trips(self):
+        args = ["日本語 café", "quote \" and \\ slash", "line\nbreak", "$() ; & % !", " trailing\\", ""]
+        self.assertEqual(self.run_cli(["inspect-args", *args]), {"protocol": 1, "args": args})
+
+    @unittest.skipUnless(os.name == "posix", "raw argv byte validation is POSIX only")
     def test_malformed_utf8(self):
-        malformed = [
-            b"\x80", b"\xff", b"\xc0\xaf", b"\xc1\xbf", b"\xc2",
-            b"\xe2\x82", b"\xe2(\xa1", b"\xe0\x80\x80", b"\xed\xa0\x80",
-            b"\xf0\x80\x80\x80", b"\xf4\x90\x80\x80", b"\xf5\x80\x80\x80",
-            b"\xf8\x88\x80\x80\x80", b"valid\xfe",
-        ]
-        for value in malformed:
-            for arguments in (
-                [b"greet", b"--name", value],
-                [value, b"--name", b"World"],
-                [b"greet", value, b"World"],
-                [b"--version", value],
-            ):
-                with self.subTest(arguments=arguments):
-                    self.assert_result(arguments, 2, b"", ERROR)
-
-
-class GoCLI(ContractTests, unittest.TestCase):
-    language = "go"
-    tools = ("go",)
-
-
-class RustCLI(ContractTests, unittest.TestCase):
-    language = "rust"
-    tools = ("cargo", "rustc")
-
-
-class CppCLI(ContractTests, unittest.TestCase):
-    language = "cpp"
-    tools = ("cmake",)
-
-
-if __name__ == "__main__":
-    unittest.main()
+        for malformed in (b"\x80", b"\xc0\xaf", b"\xed\xa0\x80", b"\xf4\x90\x80\x80", b"\xff"):
+            self.assertEqual(self.run_cli([b"inspect-args", malformed], 2)["error"]["code"],
+                             "invalid_arguments")

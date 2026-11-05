@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE base SYSTEM "http://www.4d.com/dtd/2007/base.dtd">
+<base name="DateTime" uuid="C06E9983F70F55ECBEF8990DA1470D58" collation_locale="en">
+  <schema name="DEFAULT_SCHEMA"/>
+  <base_extra><journal_file journal_file_enabled="false"/></base_extra>
+</base>
