@@ -81,6 +81,28 @@ def require_toolchain(language):
         raise ValueError(f"{language} {'.'.join(map(str, minimum))} or newer is required")
 
 
+def inspect_cpp_dependencies(executable, target):
+    if target.startswith("macos-"):
+        output = subprocess.run(["otool", "-L", str(executable)], check=True,
+                                capture_output=True, text=True).stdout
+        dependencies = [line.strip().split(" (", 1)[0] for line in output.splitlines()
+                        if " (compatibility version " in line]
+        if not dependencies:
+            raise ValueError("otool did not identify native runtime dependencies")
+        if any(not name.startswith(("/usr/lib/", "/System/Library/"))
+               or "icu" in name.lower() for name in dependencies):
+            raise ValueError("C++ CLI must use embedded static ICU and only system macOS runtime libraries")
+    else:
+        output = subprocess.run(["dumpbin", "/DEPENDENTS", str(executable)], check=True,
+                                capture_output=True, text=True).stdout
+        dependencies = re.findall(r"(?im)^\s+([a-z0-9_.-]+[.]dll)\s*$", output)
+        allowed = {"kernel32.dll", "advapi32.dll", "user32.dll", "shell32.dll", "ole32.dll",
+                   "oleaut32.dll", "ws2_32.dll", "bcrypt.dll", "ntdll.dll"}
+        if not dependencies or any(name.lower() not in allowed for name in dependencies):
+            raise ValueError("Windows CLI has unreviewed DLL dependencies or dynamic ICU/CRT")
+    return dependencies
+
+
 def build(root, target, language=None, cross=False):
     root = Path(root).resolve()
     config = load_config(root, initialized=True, repository=os.environ.get("GITHUB_REPOSITORY"))
@@ -101,6 +123,7 @@ def build(root, target, language=None, cross=False):
     output.mkdir(parents=True, exist_ok=True)
     executable = output / (config["cli"] + (".exe" if target == "windows-x64" else ""))
     executable.unlink(missing_ok=True)
+    executable.with_name("build-manifest.json").unlink(missing_ok=True)
     env = os.environ.copy()
     original_digest = source_digest(root)
     toolchain = selected
@@ -120,12 +143,15 @@ def build(root, target, language=None, cross=False):
         env["CARGO_TARGET_DIR"] = str(output / "cargo")
         commands = [["cargo", "build", "--release", "--locked"]]
     else:
+        from build_icu import build_icu
+        icu_root = build_icu(root, target, profile="tailored")
         architecture_options = (
             ["-A", "x64"] if target == "windows-x64" else
             ["-DCMAKE_OSX_ARCHITECTURES=" + ("arm64" if target == "macos-arm64" else "x86_64")])
         commands = [
             ["cmake", "-S", str(source), "-B", str(output / "cmake"),
              "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_CXX_STANDARD=17", "-DCMAKE_CXX_EXTENSIONS=OFF",
+             "-DDATETIME_ICU_ROOT=" + str(icu_root),
              *architecture_options],
             ["cmake", "--build", str(output / "cmake"), "--config", "Release"],
         ]
@@ -149,6 +175,17 @@ def build(root, target, language=None, cross=False):
         if built is None:
             raise ValueError("CMake did not produce the configured executable")
         shutil.copyfile(built, executable)
+        metadata = list((output / "cmake/CMakeFiles").glob("*/CMakeCXXCompiler.cmake"))
+        if len(metadata) != 1:
+            raise ValueError("CMake compiler version metadata is missing or ambiguous")
+        compiler_data = metadata[0].read_text(encoding="utf-8")
+        def compiler_value(name):
+            match = re.search(r'set\(' + name + r' "([^"]+)"\)', compiler_data)
+            if not match:
+                raise ValueError("CMake compiler metadata lacks " + name)
+            return match[1]
+        toolchain = " ".join(compiler_value(name) for name in (
+            "CMAKE_CXX_COMPILER_ID", "CMAKE_CXX_COMPILER_VERSION", "CMAKE_CXX_COMPILER"))
     executable.chmod(0o755)
     if source_digest(root) != original_digest:
         raise ValueError("CLI inputs changed during build")
@@ -157,7 +194,11 @@ def build(root, target, language=None, cross=False):
         if not contract.is_file():
             raise ValueError("tests/cli-contract.json is required; define feature smoke vectors")
         smoke_test(executable, config["version"], contract)
-    record(root, target, executable, target == native, toolchain)
+    dependencies = inspect_cpp_dependencies(executable, target) if selected == "cpp" else None
+    manifest = record(root, target, executable, target == native, toolchain)
+    if selected == "cpp":
+        manifest["dependencies"] = dependencies
+        executable.with_name("build-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return executable
 
 

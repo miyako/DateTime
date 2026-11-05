@@ -1,0 +1,31 @@
+{
+  "strategy": "additive",
+  "featureFilters": {
+    "misc": {
+      "includelist": [
+        "zoneinfo64",
+        "timezoneTypes",
+        "metaZones",
+        "windowsZones",
+        "supplementalData",
+        "likelySubtags",
+        "keyTypeData"
+      ]
+    },
+    "locales_tree": {
+      "includelist": ["root", "en", "en_US", "en_US_POSIX"]
+    }
+  },
+  "resourceFilters": [
+    {
+      "categories": ["locales_tree"],
+      "rules": [
+        "-/*",
+        "+/calendar/gregorian",
+        "+/NumberElements/latn",
+        "+/Version",
+        "+/%%Parent"
+      ]
+    }
+  ]
+}

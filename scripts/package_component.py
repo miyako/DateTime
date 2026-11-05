@@ -21,7 +21,7 @@ from compile_component import input_digest, output_digest
 
 
 COMPILE_TARGETS = {"x86_64_generic", "arm64_macOS_lib"}
-RUNTIME_NOTICES = {"go": "Go-LICENSE.txt", "rust": "Rust-LICENSE-MIT.txt"}
+RUNTIME_NOTICES = {"go": "Go-LICENSE.txt", "rust": "Rust-LICENSE-MIT.txt", "cpp": "ICU-LICENSE.txt"}
 EXCLUDED = {"data", "logs", ".git", ".ds_store", "__macosx"}
 
 

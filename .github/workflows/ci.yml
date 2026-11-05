@@ -64,17 +64,64 @@ jobs:
         with:
           go-version: '1.26.10'
           cache: false
+      - name: Initialize native VS2022 x64 compiler and SDK environment
+        if: matrix.language == 'cpp' && matrix.target == 'windows-x64'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -version '[17.0,18.0)' `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw "Native VS2022 C++ v143 tools are required" }
+          $devCmd = Join-Path $vs "Common7\Tools\VsDevCmd.bat"
+          $variables = & $env:ComSpec /d /c "call `"$devCmd`" -arch=x64 -host_arch=x64 >nul && set"
+          if ($LASTEXITCODE -ne 0) { throw "VsDevCmd x64 initialization failed" }
+          $utf8 = [System.Text.UTF8Encoding]::new($false)
+          foreach ($line in $variables) {
+            if ($line -notmatch '^([^=]+)=(.*)$') { continue }
+            $name, $value = $Matches[1], $Matches[2]
+            if ($name -match '^(GITHUB_|RUNNER_)' -or $name -eq 'NODE_OPTIONS') { continue }
+            if ([Environment]::GetEnvironmentVariable($name) -ne $value) {
+              [IO.File]::AppendAllText($env:GITHUB_ENV, "$name=$value`n", $utf8)
+            }
+          }
       - name: Set up Rust 1.99.1 only when selected
         if: matrix.language == 'rust'
         run: rustup toolchain install 1.99.1 --profile minimal
       - name: Select Rust 1.99.1
         if: matrix.language == 'rust'
         run: rustup default 1.99.1
-      - name: Selected CLI contract tests
-        run: python -m unittest discover -s tests -p test_cli.py -v
       - name: Native build and protocol smoke tests
         run: python scripts/build_cli.py --target "$CLI_TARGET" --language "$CLI_LANGUAGE"
         shell: bash
+      - name: Reuse the same native C++ executable in Python contract tests
+        if: matrix.language == 'cpp'
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          config = json.loads(Path("template.json").read_text(encoding="utf-8"))
+          target = os.environ["CLI_TARGET"]
+          filename = config["cli"] + (".exe" if target == "windows-x64" else "")
+          executable = Path.cwd() / "build" / target / filename
+          if not executable.is_file():
+              raise RuntimeError("the native build did not produce its configured executable")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as stream:
+              stream.write("DATETIME_TEST_EXECUTABLE=" + str(executable) + "\n")
+      - name: Selected CLI contract tests against the built executable
+        run: python -m unittest discover -s tests -p test_cli.py -v
+      - name: Compare full and tailored static ICU footprint and process overhead
+        if: matrix.language == 'cpp'
+        run: python scripts/measure_cli.py --root . --executable "$DATETIME_TEST_EXECUTABLE" --compare --samples 5 --warmups 2 --counts 1 16 256
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: matrix.language == 'cpp'
+        with:
+          name: icu-measure-${{ matrix.target }}
+          path: |
+            build/measure/${{ matrix.target }}/measurement.json
+            build/measure/${{ matrix.target }}/*/datetime-executable.zip
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@v4
         with:
           name: cli-${{ matrix.target }}

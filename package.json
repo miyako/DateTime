@@ -1,8 +1,8 @@
 {
-  "name": "4d-component-template",
+  "name": "DateTime",
   "version": "0.1.0",
   "private": true,
-  "description": "Deterministic UTF-8 greeting example",
+  "description": "Phase 1 strict instant-to-IANA-zone conversion and bounded ordered batch with embedded static ICU",
   "license": "MIT",
   "tool": {
     "platform": "macos",
