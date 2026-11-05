@@ -2,6 +2,7 @@
 import contextlib
 import hashlib
 import io
+import json
 from pathlib import Path
 import socket
 import subprocess
@@ -124,6 +125,55 @@ class DownloadTests(unittest.TestCase):
 
 
 class WindowsDataWiringTests(unittest.TestCase):
+    def test_all_full_source_categories_have_bootstrap_tools(self):
+        expected = {"gencnval", "gencfu", "makeconv", "genbrk", "gensprep", "gendict", "icupkg", "genrb"}
+        self.assertEqual(set(build_icu.WINDOWS_DATA_TOOLS), expected)
+
+    def test_bootstrap_builds_all_required_tools_before_data_execution(self):
+        marker = RuntimeError("stop after recording bootstrap")
+        with patch.object(build_icu.shutil, "which", return_value="fixture-tool"), \
+                patch.object(build_icu, "run", side_effect=marker) as run:
+            with self.assertRaisesRegex(RuntimeError, "stop after recording"):
+                build_icu.windows_build(Path("fixture/icu/source"), Path("fixture/install"),
+                                        Path("fixture/work"), None, {"PATH": ""}, io.StringIO(), 2)
+        targets = next(arg for arg in run.call_args.args[0] if str(arg).startswith("/t:"))
+        self.assertTrue(set(build_icu.WINDOWS_DATA_TOOLS).issubset(set(targets[3:].split(";"))))
+
+    def test_missing_full_tool_fails_explicitly_before_databuilder(self):
+        with patch.object(build_icu.shutil, "which", return_value="fixture-tool"), \
+                patch.object(build_icu, "run") as run, \
+                patch.object(Path, "is_file", lambda path: path.name != "gendict.exe"), \
+                patch.object(Path, "is_symlink", return_value=False):
+            with self.assertRaisesRegex(ValueError, "gendict.exe"):
+                build_icu.windows_build(Path("fixture/icu/source"), Path("fixture/install"),
+                                        Path("fixture/work"), None, {"PATH": ""}, io.StringIO(), 2)
+        self.assertEqual(run.call_count, 1)
+
+    def test_full_profile_uses_unfiltered_source_and_verbose_native_tools(self):
+        base = ROOT / "build/tooling-test-fixtures"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as directory:
+            source, generated = map(Path, ("fixture/icu/source", "fixture/generated"))
+            scratch = Path(directory)
+            full = build_icu.windows_data_command(source, generated, scratch, None)
+            self.assertIn("--verbose", full)
+            self.assertEqual(full[full.index("--mode") + 1], "windows-exec")
+            self.assertEqual(full[full.index("--seqmode") + 1], "parallel")
+            self.assertEqual(full[full.index("--src_dir") + 1], source / "data")
+            self.assertEqual(full[full.index("--tool_cfg") + 1], "x64/Release")
+            self.assertFalse(any(str(argument).endswith(".dat") for argument in full))
+            options = full[full.index("--filter_file") + 1]
+            self.assertEqual(json.loads(options.read_text()), {"usePoolBundle": False})
+            original = scratch / "original-filter.json"
+            text = '{"strategy":"additive","featureFilters":{"misc":{"includelist":["zoneinfo64"]}}}'
+            original.write_text(text)
+            tailored = build_icu.windows_data_command(source, generated, scratch, original)
+            self.assertEqual(tailored, full)
+            expected = json.loads(text)
+            expected["usePoolBundle"] = False
+            self.assertEqual(json.loads(options.read_text()), expected)
+            self.assertEqual(original.read_text(), text)
+
     def test_supported_nonexporting_object_generator_and_static_librarian(self):
         source, install, generated, scratch, work = map(Path, (
             "fixture/icu/source", "fixture/install", "fixture/generated", "fixture/scratch", "fixture/work"))
@@ -139,6 +189,40 @@ class WindowsDataWiringTests(unittest.TestCase):
         self.assertIn("x64", commands[1])
         self.assertEqual(commands[2], [
             "lib.exe", "/NOLOGO", "/OUT:" + str(install / "lib/icudt.lib"), scratch / "icudata.obj"])
+
+
+class NativeFailureDiagnosticsTests(unittest.TestCase):
+    def test_failed_command_surfaces_log_tail_and_preserves_failure(self):
+        base = ROOT / "build/tooling-test-fixtures"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as directory:
+            path = Path(directory) / "native.log"
+            failure = subprocess.CalledProcessError(1, ["native-tool"])
+            def fail(*args, **kwargs):
+                kwargs["stdout"].write("actual native tool diagnostic: failure detail\n")
+                raise failure
+            with path.open("w", encoding="utf-8") as log, \
+                    patch.object(build_icu.subprocess, "run", side_effect=fail), \
+                    contextlib.redirect_stderr(io.StringIO()) as diagnostics:
+                with self.assertRaises(subprocess.CalledProcessError) as caught:
+                    build_icu.run(["native-tool"], Path(directory), {}, log)
+            self.assertIs(caught.exception, failure)
+            self.assertIn("actual native tool diagnostic: failure detail", diagnostics.getvalue())
+            self.assertIn(str(path), diagnostics.getvalue())
+            self.assertIn("actual native tool diagnostic", path.read_text(encoding="utf-8"))
+
+    def test_timeout_surfaces_log_tail_and_preserves_timeout(self):
+        base = ROOT / "build/tooling-test-fixtures"
+        base.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=base) as directory:
+            path = Path(directory) / "native.log"
+            failure = subprocess.TimeoutExpired(["native-tool"], 1800)
+            with path.open("w", encoding="utf-8") as log, \
+                    patch.object(build_icu.subprocess, "run", side_effect=failure), \
+                    contextlib.redirect_stderr(io.StringIO()) as diagnostics:
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    build_icu.run(["native-tool"], Path(directory), {}, log)
+            self.assertIn("native-tool", diagnostics.getvalue())
 
 
 class ExportInspectionTests(unittest.TestCase):

@@ -190,7 +190,8 @@ def main():
                 configurations[profile] = json.loads(manifest.read_text())["configuration"]
                 cli_configurations[profile] = compiler_configuration(
                     root / "build/measure" / target / profile / "cmake")
-            same = ("target", "pins", "inputs", "compiler", "flags", "macosDeploymentTarget")
+            same = ("target", "pins", "inputs", "compiler", "flags", "macosDeploymentTarget",
+                    "dataBuildOptions")
             if any(configurations["tailored"][key] != configurations["full"][key] for key in same):
                 raise ValueError("comparison ICU compiler/options/source pins differ")
             if cli_configurations["tailored"] != cli_configurations["full"]:

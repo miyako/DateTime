@@ -12,9 +12,16 @@ failures are never retried, bypassed or repinned.
 The bundled `ICU-LICENSE.txt` retains the upstream Unicode-3.0 license and
 third-party notices. Tool4d is not bundled.
 
-Tailored data keeps the worldwide zone rules and supporting resources:
+Tailored data keeps the worldwide zone rules and supporting resources. The
+macOS inventory is:
 `res_index`, `en`, `en_US`, `en_US_POSIX`, `keyTypeData`, `metaZones`, `pool`,
 `root`, `supplementalData`, `timezoneTypes`, `windowsZones`, `zoneinfo64`.
+Windows uses equivalent unpooled locale bundles (`usePoolBundle:false`) and
+ICU's supported `--seqmode parallel` request splitting for both full and tailored
+profiles. This retains all source inputs while avoiding the Windows command
+processor's 8191-character limit: the full pool-generation request was 9706
+characters; supported unpooled requests measured at most 472 characters.
+No full-profile locale or feature data is excluded to make that comparison pass.
 It removes irrelevant collation, transliteration, legacy conversion and other
 data. Code and data are statically linked without whole-archive retention.
 ICU symbols are hidden; macOS executable export inspection found no exports.

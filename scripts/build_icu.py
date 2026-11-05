@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build pinned ICU and filtered SOURCE data, on a matching native host only."""
 import argparse
+from collections import deque
 from contextlib import contextmanager
 import hashlib
 import json
@@ -19,6 +20,8 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 DOWNLOAD_ATTEMPTS = 4
+WINDOWS_DATA_TOOLS = (
+    "gencnval", "gencfu", "makeconv", "genbrk", "gensprep", "gendict", "icupkg", "genrb")
 
 
 def retryable_download_error(error):
@@ -154,8 +157,16 @@ def native_target():
 def run(command, cwd, env, log):
     log.write("$ " + subprocess.list2cmdline(list(map(str, command))) + "\n")
     log.flush()
-    subprocess.run(list(map(str, command)), cwd=cwd, env=env, stdout=log,
-                   stderr=subprocess.STDOUT, check=True, timeout=1800)
+    try:
+        subprocess.run(list(map(str, command)), cwd=cwd, env=env, stdout=log,
+                       stderr=subprocess.STDOUT, check=True, timeout=1800)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        log.flush()
+        print("ICU build command failed; native log: " + str(log.name), file=sys.stderr)
+        with Path(log.name).open(encoding="utf-8", errors="replace") as stream:
+            tail = deque(stream, maxlen=80)
+        print("".join(tail)[-20000:], file=sys.stderr, end="")
+        raise
 
 
 def windows_data_library(source, installation, generated, scratch, work, env, log):
@@ -175,6 +186,23 @@ def windows_data_library(source, installation, generated, scratch, work, env, lo
         work, env, log)
 
 
+def windows_data_filter(scratch, filter_file):
+    options = json.loads(filter_file.read_text(encoding="utf-8")) if filter_file else {}
+    options["usePoolBundle"] = False
+    path = scratch / "windows-data-filter.json"
+    path.write_text(json.dumps(options, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
+def windows_data_command(source, generated, scratch, filter_file):
+    command = [os.sys.executable, "-u", "-B", "-m", "icutools.databuilder",
+               "--mode", "windows-exec", "--seqmode", "parallel", "--verbose",
+               "--src_dir", source / "data", "--tool_dir", source / "tools",
+               "--tool_cfg", "x64/Release", "--out_dir", generated, "--tmp_dir", scratch,
+               "--filter_file", windows_data_filter(scratch, filter_file)]
+    return command
+
+
 def windows_build(source, installation, work, filter_file, env, log, jobs):
     """Native VS2022 bootstrap tools, source databuilder, then /MT static libraries."""
     # ICU's supported Windows data renderer forms unquoted shell command lines.
@@ -184,22 +212,20 @@ def windows_build(source, installation, work, filter_file, env, log, jobs):
         if shutil.which(tool) is None:
             raise ValueError("run in a VS2022 x64 Native Tools environment: missing " + tool)
     # Bootstrap DLLs stay in the build tree; no bootstrap runtime is shipped.
-    tools = "common;i18n;genrb;genccode;gencmn;gencnval;gencfu;genbrk;gendict;gensprep;makeconv;icupkg;pkgdata"
+    tools = ";".join(("common", "i18n", "genccode", "gencmn", "pkgdata", *WINDOWS_DATA_TOOLS))
     run(["MSBuild.exe", source / "allinone/allinone.sln", "/m:" + str(jobs),
          "/p:Configuration=Release", "/p:Platform=x64", "/p:DefaultPlatformToolset=v143",
          "/t:" + tools], source, env, log)
+    for tool in WINDOWS_DATA_TOOLS:
+        executable = source / "tools" / tool / "x64/Release" / (tool + ".exe")
+        if not executable.is_file() or executable.is_symlink():
+            raise ValueError("ICU native source-data tool is missing: " + str(executable))
     generated = checked_directory(work / "generated")
     scratch = checked_directory(work / "data-tmp")
     data_env = env.copy()
     data_env["PYTHONPATH"] = str(source / "python")
     data_env["PATH"] = str(source.parent / "bin64") + os.pathsep + env["PATH"]
-    command = [os.sys.executable, "-B", "-m", "icutools.databuilder",
-               "--mode", "windows-exec", "--src_dir", source / "data",
-               "--tool_dir", source / "tools", "--tool_cfg", "x64/Release",
-               "--out_dir", generated, "--tmp_dir", scratch]
-    if filter_file:
-        command.extend(["--filter_file", filter_file])
-    run(command, source / "data", data_env, log)
+    run(windows_data_command(source, generated, scratch, filter_file), source / "data", data_env, log)
     windows_data_library(source, installation, generated, scratch, work, data_env, log)
     # The global property overrides DLL project type; late import overrides /MD.
     props = work / "static.props"
@@ -305,7 +331,9 @@ def _build(root, target, profile, jobs):
                root / "scripts/build_icu.py")}
     signature = {"schema": 1, "target": target, "profile": profile, "pins": pin,
                  "inputs": inputs, "compiler": compiler_version, "flags": flags,
-                 "macosDeploymentTarget": "11.0"}
+                 "macosDeploymentTarget": "11.0",
+                 "dataBuildOptions": {"seqmode": "parallel", "usePoolBundle": False}
+                 if target == "windows-x64" else {"usePoolBundle": True}}
     marker = installation / "icu-build.json"
     if marker.is_file() and not marker.is_symlink():
         previous = json.loads(marker.read_text(encoding="utf-8"))

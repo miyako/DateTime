@@ -131,6 +131,15 @@ jobs:
             build/measure/${{ matrix.target }}/*/datetime-executable.zip
           if-no-files-found: error
           retention-days: 7
+      - name: Preserve native ICU build diagnostics on failure
+        if: failure() && matrix.language == 'cpp'
+        uses: actions/upload-artifact@v4
+        with:
+          name: icu-diagnostics-${{ matrix.target }}
+          path: build/icu/${{ matrix.target }}/**/*.log
+          if-no-files-found: warn
+          retention-days: 7
+
   assembly:
     needs: [configuration, native]
     if: needs.configuration.outputs.initialized == 'true'
