@@ -2,6 +2,7 @@
 import copy
 import json
 from pathlib import Path
+import re
 import sys
 import unittest
 from unittest.mock import patch
@@ -200,7 +201,21 @@ class ReleaseAssetsTests(unittest.TestCase):
         self.assertNotIn("shell", run.call_args.kwargs)
         self.assertNotIn("*.zip", arguments)
 
-    def test_release_secret_gate_and_manual_escalation_are_explicit(self):
+    def test_publish_form_only_selects_version_mode_and_resolves_signing_policy(self):
+        workflow = (ROOT / ".github/workflows/publish.yml").read_text()
+        dispatch = workflow.split("\npermissions:", 1)[0]
+        self.assertEqual(re.findall(r"^      (\w+):", dispatch, re.MULTILINE), ["mode"])
+        self.assertNotIn("require_apple_signing", workflow)
+        self.assertNotIn("REQUIRE_APPLE_SIGNING", workflow)
+        resolver = workflow.split("name: Resolve version signing policy without accessing secrets", 1)[1].split(
+            "\n      - name:", 1)[0]
+        self.assertIn("run: python scripts/sign_release.py policy --root .", resolver)
+        self.assertNotIn("--require-apple-signing", resolver)
+        self.assertNotIn("env:", resolver)
+        self.assertIn("apple_signing: ${{ steps.signing_policy.outputs.apple_signing }}", workflow)
+        self.assertIn("APPLE_SIGNING: ${{ needs.version.outputs.apple_signing }}", workflow)
+
+    def test_release_secret_gate_is_controlled_by_version_policy(self):
         workflow = (ROOT / ".github/workflows/publish.yml").read_text()
         unsigned = workflow.split("name: Build and accept unsigned component without Apple secrets")[1].split(
             "name: Sign, notarize, staple")[0]
@@ -211,7 +226,6 @@ class ReleaseAssetsTests(unittest.TestCase):
         self.assertIn("apple_signing == 'true'", signed)
         self.assertEqual(signed.count("secrets."), 7)
         self.assertIn("--require-apple-signing", signed)
-        self.assertIn("require_apple_signing:", workflow)
         self.assertIn("scripts/release_assets.py", workflow)
         self.assertNotIn("continue-on-error", workflow)
 

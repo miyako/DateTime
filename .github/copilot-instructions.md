@@ -18,6 +18,6 @@ Follow AGENTS.md for fixed free tool4d, licensing, packaging and optional signin
 Keep exactly CI and manual main-only Publish workflows. Publish accepts
 patch/minor/major, commits synchronized version metadata, builds that exact SHA
 and verifies accepted transferred assets before atomically creating the tag/release.
-Signing is opt-in through version policy or manual input; require the full
+Signing is controlled solely by version policy, with no Publish input; require the full
 notarized-DMG and exact final ZIP host gates without unsigned fallback.
 Unsigned local acceptance needs no license activation or signing secrets.
