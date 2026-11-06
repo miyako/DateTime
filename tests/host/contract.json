@@ -3,144 +3,655 @@
   "feature": {
     "casesPath": "/cases",
     "cases": [
-      {"stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.000Z\",\"zone\":\"Europe/Paris\",\"local\":\"2026-01-15T13:00:00.000+01:00\",\"offsetSeconds\":3600}\n", "stderr": "", "exitCode": 0, "value": {"protocol":1,"instant":"2026-01-15T12:00:00.000Z","zone":"Europe/Paris","local":"2026-01-15T13:00:00.000+01:00","offsetSeconds":3600}},
-      {"stdout": "{\"protocol\":1,\"instant\":\"2026-07-15T12:00:00.000Z\",\"zone\":\"Europe/Paris\",\"local\":\"2026-07-15T14:00:00.000+02:00\",\"offsetSeconds\":7200}\n", "stderr": "", "exitCode": 0, "value": {"protocol":1,"instant":"2026-07-15T12:00:00.000Z","zone":"Europe/Paris","local":"2026-07-15T14:00:00.000+02:00","offsetSeconds":7200}},
-      {"stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.000Z\",\"zone\":\"America/New_York\",\"local\":\"2026-01-15T07:00:00.000-05:00\",\"offsetSeconds\":-18000}\n", "stderr": "", "exitCode": 0, "value": {"protocol":1,"instant":"2026-01-15T12:00:00.000Z","zone":"America/New_York","local":"2026-01-15T07:00:00.000-05:00","offsetSeconds":-18000}},
-      {"stdout": "{\"protocol\":1,\"instant\":\"2026-07-15T12:00:00.000Z\",\"zone\":\"America/New_York\",\"local\":\"2026-07-15T08:00:00.000-04:00\",\"offsetSeconds\":-14400}\n", "stderr": "", "exitCode": 0, "value": {"protocol":1,"instant":"2026-07-15T12:00:00.000Z","zone":"America/New_York","local":"2026-07-15T08:00:00.000-04:00","offsetSeconds":-14400}},
-      {"stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.123Z\",\"zone\":\"Asia/Kathmandu\",\"local\":\"2026-01-15T17:45:00.123+05:45\",\"offsetSeconds\":20700}\n", "stderr": "", "exitCode": 0, "value": {"protocol":1,"instant":"2026-01-15T12:00:00.123Z","zone":"Asia/Kathmandu","local":"2026-01-15T17:45:00.123+05:45","offsetSeconds":20700}},
-      {"stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.100Z\",\"zone\":\"Etc/UTC\",\"local\":\"2026-01-15T12:00:00.100+00:00\",\"offsetSeconds\":0}\n", "stderr": "", "exitCode": 0, "value": {"protocol":1,"instant":"2026-01-15T12:00:00.100Z","zone":"Etc/UTC","local":"2026-01-15T12:00:00.100+00:00","offsetSeconds":0}}
+      {
+        "stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.000Z\",\"zone\":\"Europe/Paris\",\"local\":\"2026-01-15T13:00:00.000+01:00\",\"offsetSeconds\":3600}\n",
+        "stderr": "",
+        "exitCode": 0,
+        "value": {
+          "protocol": 1,
+          "instant": "2026-01-15T12:00:00.000Z",
+          "zone": "Europe/Paris",
+          "local": "2026-01-15T13:00:00.000+01:00",
+          "offsetSeconds": 3600
+        }
+      },
+      {
+        "stdout": "{\"protocol\":1,\"instant\":\"2026-07-15T12:00:00.000Z\",\"zone\":\"Europe/Paris\",\"local\":\"2026-07-15T14:00:00.000+02:00\",\"offsetSeconds\":7200}\n",
+        "stderr": "",
+        "exitCode": 0,
+        "value": {
+          "protocol": 1,
+          "instant": "2026-07-15T12:00:00.000Z",
+          "zone": "Europe/Paris",
+          "local": "2026-07-15T14:00:00.000+02:00",
+          "offsetSeconds": 7200
+        }
+      },
+      {
+        "stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.000Z\",\"zone\":\"America/New_York\",\"local\":\"2026-01-15T07:00:00.000-05:00\",\"offsetSeconds\":-18000}\n",
+        "stderr": "",
+        "exitCode": 0,
+        "value": {
+          "protocol": 1,
+          "instant": "2026-01-15T12:00:00.000Z",
+          "zone": "America/New_York",
+          "local": "2026-01-15T07:00:00.000-05:00",
+          "offsetSeconds": -18000
+        }
+      },
+      {
+        "stdout": "{\"protocol\":1,\"instant\":\"2026-07-15T12:00:00.000Z\",\"zone\":\"America/New_York\",\"local\":\"2026-07-15T08:00:00.000-04:00\",\"offsetSeconds\":-14400}\n",
+        "stderr": "",
+        "exitCode": 0,
+        "value": {
+          "protocol": 1,
+          "instant": "2026-07-15T12:00:00.000Z",
+          "zone": "America/New_York",
+          "local": "2026-07-15T08:00:00.000-04:00",
+          "offsetSeconds": -14400
+        }
+      },
+      {
+        "stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.123Z\",\"zone\":\"Asia/Kathmandu\",\"local\":\"2026-01-15T17:45:00.123+05:45\",\"offsetSeconds\":20700}\n",
+        "stderr": "",
+        "exitCode": 0,
+        "value": {
+          "protocol": 1,
+          "instant": "2026-01-15T12:00:00.123Z",
+          "zone": "Asia/Kathmandu",
+          "local": "2026-01-15T17:45:00.123+05:45",
+          "offsetSeconds": 20700
+        }
+      },
+      {
+        "stdout": "{\"protocol\":1,\"instant\":\"2026-01-15T12:00:00.100Z\",\"zone\":\"Etc/UTC\",\"local\":\"2026-01-15T12:00:00.100+00:00\",\"offsetSeconds\":0}\n",
+        "stderr": "",
+        "exitCode": 0,
+        "value": {
+          "protocol": 1,
+          "instant": "2026-01-15T12:00:00.100Z",
+          "zone": "Etc/UTC",
+          "local": "2026-01-15T12:00:00.100+00:00",
+          "offsetSeconds": 0
+        }
+      }
     ],
     "assertions": [
-      {"path": "/invalid/ok", "equals": false},
-      {"path": "/invalid/exitCode", "equals": 2},
-      {"path": "/invalid/stdout", "equals": ""},
-      {"path": "/invalid/error/code", "equals": "cli_error"},
-      {"path": "/invalidZones", "length": 6, "each": [
-        {"path": "/ok", "equals": false}, {"path": "/exitCode", "equals": 2},
-        {"path": "/stdout", "equals": ""}, {"path": "/error/code", "equals": "cli_error"}
-      ]},
-      {"path": "/invalidInstants", "length": 6, "each": [
-        {"path": "/ok", "equals": false}, {"path": "/exitCode", "equals": 2},
-        {"path": "/stdout", "equals": ""}, {"path": "/error/code", "equals": "cli_error"}
-      ]},
-      {"path": "/batch/ok", "equals": true},
-      {"path": "/batch/exitCode", "equals": 0},
-      {"path": "/batch/stderr", "equals": ""},
-      {"path": "/batch/value/protocol", "equals": 1},
-      {"path": "/batch/value/results", "length": 3},
-      {"path": "/batch/value/results/0/ok", "equals": true},
-      {"path": "/batch/value/results/0/value", "equals": {"instant":"2026-01-15T12:00:00.123Z","zone":"Asia/Kathmandu","local":"2026-01-15T17:45:00.123+05:45","offsetSeconds":20700}},
-      {"path": "/batch/value/results/1/ok", "equals": false},
-      {"path": "/batch/value/results/1/error/code", "equals": "invalid_instant"},
-      {"path": "/batch/value/results/2/ok", "equals": false},
-      {"path": "/batch/value/results/2/error/code", "equals": "invalid_zone"},
-      {"path": "/maxBatch/ok", "equals": true},
-      {"path": "/maxBatch/value/results", "length": 256, "each": [
-        {"path": "/ok", "equals": true},
-        {"path": "/value", "equals": {"instant":"2026-01-15T12:00:00.000Z","zone":"Etc/UTC","local":"2026-01-15T12:00:00.000+00:00","offsetSeconds":0}}
-      ]},
-      {"path": "/oversizedBatch/ok", "equals": false},
-      {"path": "/oversizedBatch/error/code", "equals": "invalid_argument"},
-      {"path": "/oversizedBatch/exitCode", "absent": true},
-      {"path": "/oversizedInstant/ok", "equals": false},
-      {"path": "/oversizedInstant/error/code", "equals": "invalid_argument"},
-      {"path": "/oversizedInstant/exitCode", "absent": true},
-      {"path": "/invalidBatch/ok", "equals": false},
-      {"path": "/invalidBatch/error/code", "equals": "invalid_argument"},
-      {"path": "/invalidBatch/exitCode", "absent": true},
-      {"path": "/nullInstant/ok", "equals": false},
-      {"path": "/nullInstant/error/code", "equals": "invalid_argument"},
-      {"path": "/nullInstant/exitCode", "absent": true},
-      {"path": "/nullZone/ok", "equals": false},
-      {"path": "/nullZone/error/code", "equals": "invalid_argument"},
-      {"path": "/nullZone/exitCode", "absent": true},
-      {"path": "/rejectedFeatureTypes", "length": 14, "each": [
-        {"path": "/ok", "equals": false}, {"path": "/error/code", "equals": "invalid_argument"},
-        {"path": "/exitCode", "absent": true}
-      ]},
-      {"path": "/rejectedBatchShapes", "length": 4, "each": [
-        {"path": "/ok", "equals": false}, {"path": "/error/code", "equals": "invalid_argument"},
-        {"path": "/exitCode", "absent": true}
-      ]},
-      {"path": "/protocolConversions", "length": 3, "each": [
-        {"path": "/ok", "equals": false}, {"path": "/error/code", "equals": "invalid_protocol"},
-        {"path": "/exitCode", "equals": 0}, {"path": "/value", "absent": true}
-      ]},
-      {"path": "/protocolBatches", "length": 5, "each": [
-        {"path": "/ok", "equals": false}, {"path": "/error/code", "equals": "invalid_protocol"},
-        {"path": "/exitCode", "equals": 0}, {"path": "/value", "absent": true}
-      ]},
-      {"path": "/version/ok", "equals": true},
-      {"path": "/version/stdout", "equals": "{\"protocol\":1,\"version\":\"0.1.0\"}\n"},
-      {"path": "/version/stderr", "equals": ""},
-      {"path": "/version/exitCode", "equals": 0},
-      {"path": "/version/value", "equals": {"protocol": 1, "version": "0.1.0"}},
-      {"path": "/protocol/ok", "equals": false},
-      {"path": "/protocol/stdout", "equals": "not json"},
-      {"path": "/protocol/stderr", "equals": ""},
-      {"path": "/protocol/exitCode", "equals": 0},
-      {"path": "/protocol/error/code", "equals": "invalid_protocol"},
-      {"path": "/protocolTypes", "length": 2, "each": [
-        {"path": "/ok", "equals": false},
-        {"path": "/stderr", "equals": ""},
-        {"path": "/exitCode", "equals": 0},
-        {"path": "/error/code", "equals": "invalid_protocol"},
-        {"path": "/error/message", "equals": "Unsupported CLI protocol version"},
-        {"path": "/value", "absent": true}
-      ]},
-      {"path": "/protocolTypes/0/stdout", "equals": "{\"protocol\":true,\"instant\":\"invalid\"}"},
-      {"path": "/protocolTypes/1/stdout", "equals": "{\"protocol\":false,\"instant\":\"invalid\"}"},
-      {"path": "/protocolNull/ok", "equals": false},
-      {"path": "/protocolNull/stdout", "equals": "{\"protocol\":null,\"instant\":\"invalid\"}"},
-      {"path": "/protocolNull/stderr", "equals": ""},
-      {"path": "/protocolNull/exitCode", "equals": 0},
-      {"path": "/protocolNull/error/code", "equals": "invalid_protocol"},
-      {"path": "/protocolNull/error/message", "equals": "Unsupported CLI protocol version"},
-      {"path": "/protocolNull/value", "absent": true},
-      {"path": "/protocolScalars", "length": 5, "each": [
-        {"path": "/ok", "equals": false},
-        {"path": "/stderr", "equals": ""},
-        {"path": "/exitCode", "equals": 0},
-        {"path": "/error/code", "equals": "invalid_protocol"},
-        {"path": "/error/message", "equals": "CLI response must be a JSON object"},
-        {"path": "/value", "absent": true}
-      ]},
-      {"path": "/protocolScalars/0/stdout", "equals": "true"},
-      {"path": "/protocolScalars/1/stdout", "equals": "false"},
-      {"path": "/protocolScalars/2/stdout", "equals": "null"},
-      {"path": "/protocolScalars/3/stdout", "equals": "1"},
-      {"path": "/protocolScalars/4/stdout", "equals": "[]"}
+      {
+        "path": "/invalid/ok",
+        "equals": false
+      },
+      {
+        "path": "/invalid/exitCode",
+        "equals": 2
+      },
+      {
+        "path": "/invalid/stdout",
+        "equals": ""
+      },
+      {
+        "path": "/invalid/error/code",
+        "equals": "cli_error"
+      },
+      {
+        "path": "/invalidZones",
+        "length": 6,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/exitCode",
+            "equals": 2
+          },
+          {
+            "path": "/stdout",
+            "equals": ""
+          },
+          {
+            "path": "/error/code",
+            "equals": "cli_error"
+          }
+        ]
+      },
+      {
+        "path": "/invalidInstants",
+        "length": 6,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/exitCode",
+            "equals": 2
+          },
+          {
+            "path": "/stdout",
+            "equals": ""
+          },
+          {
+            "path": "/error/code",
+            "equals": "cli_error"
+          }
+        ]
+      },
+      {
+        "path": "/batch/ok",
+        "equals": true
+      },
+      {
+        "path": "/batch/exitCode",
+        "equals": 0
+      },
+      {
+        "path": "/batch/stderr",
+        "equals": ""
+      },
+      {
+        "path": "/batch/value/protocol",
+        "equals": 1
+      },
+      {
+        "path": "/batch/value/results",
+        "length": 3
+      },
+      {
+        "path": "/batch/value/results/0/ok",
+        "equals": true
+      },
+      {
+        "path": "/batch/value/results/0/value",
+        "equals": {
+          "instant": "2026-01-15T12:00:00.123Z",
+          "zone": "Asia/Kathmandu",
+          "local": "2026-01-15T17:45:00.123+05:45",
+          "offsetSeconds": 20700
+        }
+      },
+      {
+        "path": "/batch/value/results/1/ok",
+        "equals": false
+      },
+      {
+        "path": "/batch/value/results/1/error/code",
+        "equals": "invalid_instant"
+      },
+      {
+        "path": "/batch/value/results/2/ok",
+        "equals": false
+      },
+      {
+        "path": "/batch/value/results/2/error/code",
+        "equals": "invalid_zone"
+      },
+      {
+        "path": "/maxBatch/ok",
+        "equals": true
+      },
+      {
+        "path": "/maxBatch/value/results",
+        "length": 256,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": true
+          },
+          {
+            "path": "/value",
+            "equals": {
+              "instant": "2026-01-15T12:00:00.000Z",
+              "zone": "Etc/UTC",
+              "local": "2026-01-15T12:00:00.000+00:00",
+              "offsetSeconds": 0
+            }
+          }
+        ]
+      },
+      {
+        "path": "/oversizedBatch/ok",
+        "equals": false
+      },
+      {
+        "path": "/oversizedBatch/error/code",
+        "equals": "invalid_argument"
+      },
+      {
+        "path": "/oversizedBatch/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/oversizedInstant/ok",
+        "equals": false
+      },
+      {
+        "path": "/oversizedInstant/error/code",
+        "equals": "invalid_argument"
+      },
+      {
+        "path": "/oversizedInstant/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/invalidBatch/ok",
+        "equals": false
+      },
+      {
+        "path": "/invalidBatch/error/code",
+        "equals": "invalid_argument"
+      },
+      {
+        "path": "/invalidBatch/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/nullInstant/ok",
+        "equals": false
+      },
+      {
+        "path": "/nullInstant/error/code",
+        "equals": "invalid_argument"
+      },
+      {
+        "path": "/nullInstant/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/nullZone/ok",
+        "equals": false
+      },
+      {
+        "path": "/nullZone/error/code",
+        "equals": "invalid_argument"
+      },
+      {
+        "path": "/nullZone/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/rejectedFeatureTypes",
+        "length": 14,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/error/code",
+            "equals": "invalid_argument"
+          },
+          {
+            "path": "/exitCode",
+            "absent": true
+          }
+        ]
+      },
+      {
+        "path": "/rejectedBatchShapes",
+        "length": 4,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/error/code",
+            "equals": "invalid_argument"
+          },
+          {
+            "path": "/exitCode",
+            "absent": true
+          }
+        ]
+      },
+      {
+        "path": "/protocolConversions",
+        "length": 3,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/error/code",
+            "equals": "invalid_protocol"
+          },
+          {
+            "path": "/exitCode",
+            "equals": 0
+          },
+          {
+            "path": "/value",
+            "absent": true
+          }
+        ]
+      },
+      {
+        "path": "/protocolBatches",
+        "length": 5,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/error/code",
+            "equals": "invalid_protocol"
+          },
+          {
+            "path": "/exitCode",
+            "equals": 0
+          },
+          {
+            "path": "/value",
+            "absent": true
+          }
+        ]
+      },
+      {
+        "path": "/version/ok",
+        "equals": true
+      },
+      {
+        "path": "/version/stdout",
+        "equals": "{\"protocol\":1,\"version\":\"0.1.1\"}\n"
+      },
+      {
+        "path": "/version/stderr",
+        "equals": ""
+      },
+      {
+        "path": "/version/exitCode",
+        "equals": 0
+      },
+      {
+        "path": "/version/value",
+        "equals": {
+          "protocol": 1,
+          "version": "0.1.1"
+        }
+      },
+      {
+        "path": "/protocol/ok",
+        "equals": false
+      },
+      {
+        "path": "/protocol/stdout",
+        "equals": "not json"
+      },
+      {
+        "path": "/protocol/stderr",
+        "equals": ""
+      },
+      {
+        "path": "/protocol/exitCode",
+        "equals": 0
+      },
+      {
+        "path": "/protocol/error/code",
+        "equals": "invalid_protocol"
+      },
+      {
+        "path": "/protocolTypes",
+        "length": 2,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/stderr",
+            "equals": ""
+          },
+          {
+            "path": "/exitCode",
+            "equals": 0
+          },
+          {
+            "path": "/error/code",
+            "equals": "invalid_protocol"
+          },
+          {
+            "path": "/error/message",
+            "equals": "Unsupported CLI protocol version"
+          },
+          {
+            "path": "/value",
+            "absent": true
+          }
+        ]
+      },
+      {
+        "path": "/protocolTypes/0/stdout",
+        "equals": "{\"protocol\":true,\"instant\":\"invalid\"}"
+      },
+      {
+        "path": "/protocolTypes/1/stdout",
+        "equals": "{\"protocol\":false,\"instant\":\"invalid\"}"
+      },
+      {
+        "path": "/protocolNull/ok",
+        "equals": false
+      },
+      {
+        "path": "/protocolNull/stdout",
+        "equals": "{\"protocol\":null,\"instant\":\"invalid\"}"
+      },
+      {
+        "path": "/protocolNull/stderr",
+        "equals": ""
+      },
+      {
+        "path": "/protocolNull/exitCode",
+        "equals": 0
+      },
+      {
+        "path": "/protocolNull/error/code",
+        "equals": "invalid_protocol"
+      },
+      {
+        "path": "/protocolNull/error/message",
+        "equals": "Unsupported CLI protocol version"
+      },
+      {
+        "path": "/protocolNull/value",
+        "absent": true
+      },
+      {
+        "path": "/protocolScalars",
+        "length": 5,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": false
+          },
+          {
+            "path": "/stderr",
+            "equals": ""
+          },
+          {
+            "path": "/exitCode",
+            "equals": 0
+          },
+          {
+            "path": "/error/code",
+            "equals": "invalid_protocol"
+          },
+          {
+            "path": "/error/message",
+            "equals": "CLI response must be a JSON object"
+          },
+          {
+            "path": "/value",
+            "absent": true
+          }
+        ]
+      },
+      {
+        "path": "/protocolScalars/0/stdout",
+        "equals": "true"
+      },
+      {
+        "path": "/protocolScalars/1/stdout",
+        "equals": "false"
+      },
+      {
+        "path": "/protocolScalars/2/stdout",
+        "equals": "null"
+      },
+      {
+        "path": "/protocolScalars/3/stdout",
+        "equals": "1"
+      },
+      {
+        "path": "/protocolScalars/4/stdout",
+        "equals": "[]"
+      }
     ]
   },
   "execution": {
-    "successPaths": ["/fileArgument", "/folderArgument", "/renamedExecutable"],
+    "successPaths": [
+      "/fileArgument",
+      "/folderArgument",
+      "/renamedExecutable"
+    ],
     "assertions": [
-      {"path": "/renamedExecutable", "equals": {"ok": true, "stdout": "{\"protocol\":1,\"version\":\"0.1.0\"}\n", "stderr": "", "exitCode": 0}},
-      {"path": "/quotedArguments", "length": 5, "each": [
-        {"path": "/ok", "equals": true}, {"path": "/stderr", "equals": ""}, {"path": "/exitCode", "equals": 0}
-      ]},
-      {"path": "/quotedArguments/0/stdout", "equals": "{\"protocol\":1,\"args\":[\"path with spaces\"]}\n"},
-      {"path": "/quotedArguments/1/stdout", "equals": "{\"protocol\":1,\"args\":[\"quote \\\" and \\\\ slash\"]}\n"},
-      {"path": "/quotedArguments/2/stdout", "equals": "{\"protocol\":1,\"args\":[\"line\\nbreak\"]}\n"},
-      {"path": "/quotedArguments/3/stdout", "equals": "{\"protocol\":1,\"args\":[\"日本語\"]}\n"},
-      {"path": "/quotedArguments/4/stdout", "equals": "{\"protocol\":1,\"args\":[\"$() ; & % !\"]}\n"},
-      {"path": "/missing/ok", "equals": false},
-      {"path": "/missing/error/code", "equals": "missing_executable"},
-      {"path": "/missing/exitCode", "absent": true},
-      {"path": "/unsupported/ok", "equals": false},
-      {"path": "/unsupported/error/code", "equals": "unsupported_architecture"},
-      {"path": "/unsupported/exitCode", "absent": true},
-      {"path": "/launch/ok", "equals": false},
-      {"path": "/launch/error/code", "equals": "launch_failed"},
-      {"path": "/launch/exitCode", "absent": true},
-      {"path": "/rejectedArguments", "length": 9, "each": [
-        {"path": "/result", "equals": {"ok": false, "error": {"code": "invalid_argument", "message": "Arguments must be Text, File or Folder"}}}
-      ]},
-      {"path": "/rejectedNul", "length": 3, "each": [
-        {"path": "", "equals": {"ok": false, "error": {"code": "invalid_argument", "message": "NUL is not permitted in process arguments"}}}
-      ]},
-      {"path": "/missingFile", "equals": {"ok": false, "error": {"code": "invalid_argument", "message": "Executable File and arguments Collection are required"}}},
-      {"path": "/missingArguments", "equals": {"ok": false, "error": {"code": "invalid_argument", "message": "Executable File and arguments Collection are required"}}}
+      {
+        "path": "/renamedExecutable",
+        "equals": {
+          "ok": true,
+          "stdout": "{\"protocol\":1,\"version\":\"0.1.1\"}\n",
+          "stderr": "",
+          "exitCode": 0
+        }
+      },
+      {
+        "path": "/quotedArguments",
+        "length": 5,
+        "each": [
+          {
+            "path": "/ok",
+            "equals": true
+          },
+          {
+            "path": "/stderr",
+            "equals": ""
+          },
+          {
+            "path": "/exitCode",
+            "equals": 0
+          }
+        ]
+      },
+      {
+        "path": "/quotedArguments/0/stdout",
+        "equals": "{\"protocol\":1,\"args\":[\"path with spaces\"]}\n"
+      },
+      {
+        "path": "/quotedArguments/1/stdout",
+        "equals": "{\"protocol\":1,\"args\":[\"quote \\\" and \\\\ slash\"]}\n"
+      },
+      {
+        "path": "/quotedArguments/2/stdout",
+        "equals": "{\"protocol\":1,\"args\":[\"line\\nbreak\"]}\n"
+      },
+      {
+        "path": "/quotedArguments/3/stdout",
+        "equals": "{\"protocol\":1,\"args\":[\"日本語\"]}\n"
+      },
+      {
+        "path": "/quotedArguments/4/stdout",
+        "equals": "{\"protocol\":1,\"args\":[\"$() ; & % !\"]}\n"
+      },
+      {
+        "path": "/missing/ok",
+        "equals": false
+      },
+      {
+        "path": "/missing/error/code",
+        "equals": "missing_executable"
+      },
+      {
+        "path": "/missing/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/unsupported/ok",
+        "equals": false
+      },
+      {
+        "path": "/unsupported/error/code",
+        "equals": "unsupported_architecture"
+      },
+      {
+        "path": "/unsupported/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/launch/ok",
+        "equals": false
+      },
+      {
+        "path": "/launch/error/code",
+        "equals": "launch_failed"
+      },
+      {
+        "path": "/launch/exitCode",
+        "absent": true
+      },
+      {
+        "path": "/rejectedArguments",
+        "length": 9,
+        "each": [
+          {
+            "path": "/result",
+            "equals": {
+              "ok": false,
+              "error": {
+                "code": "invalid_argument",
+                "message": "Arguments must be Text, File or Folder"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "path": "/rejectedNul",
+        "length": 3,
+        "each": [
+          {
+            "path": "",
+            "equals": {
+              "ok": false,
+              "error": {
+                "code": "invalid_argument",
+                "message": "NUL is not permitted in process arguments"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "path": "/missingFile",
+        "equals": {
+          "ok": false,
+          "error": {
+            "code": "invalid_argument",
+            "message": "Executable File and arguments Collection are required"
+          }
+        }
+      },
+      {
+        "path": "/missingArguments",
+        "equals": {
+          "ok": false,
+          "error": {
+            "code": "invalid_argument",
+            "message": "Executable File and arguments Collection are required"
+          }
+        }
+      }
     ]
   }
 }

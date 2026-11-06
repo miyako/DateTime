@@ -31,11 +31,11 @@ class DateTimeNativeTests(unittest.TestCase):
         return self.invoke("convert", "--instant", instant, "--zone", zone)
 
     def test_version(self):
-        self.assertEqual(self.invoke("--version"), {"protocol": 1, "version": "0.1.0"})
+        self.assertEqual(self.invoke("--version"), {"protocol": 1, "version": "0.1.1"})
 
     def test_info(self):
         self.assertEqual(self.invoke("--info"), {
-            "protocol": 1, "version": "0.1.0", "icuVersion": "77.1",
+            "protocol": 1, "version": "0.1.1", "icuVersion": "77.1",
             "dataVersion": "77.1", "unicodeVersion": "16.0",
             "tzdataVersion": "2025a", "dataMode": "embedded-static"})
 
