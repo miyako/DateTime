@@ -58,6 +58,22 @@ scripts/tests. Resolve all paths below from the repository root, not this folder
    Downloaded asset/hash/host-evidence and collision checks precede new tag/release
    creation. Do not precreate tags or enable tag-push publication.
 
+## Component release versions and tags
+
+New release tags must equal the prefix-free SemVer component version:
+`0.1.0`, never `v0.1.0`. Package validation, signing proofs and publication
+reject prefixed new inputs. Version selection reads bare and legacy stable
+`vX.Y.Z` tags only to choose the highest numeric migration baseline, ignoring
+prereleases/build metadata. Do not rename/delete/move/alias published history
+or reuse its acceptance/signing evidence. Preserve exact-version signing policy.
+Upstream Actions/toolchain tags and historical external URLs are not rewrite
+targets.
+
+The official [Follow 4D version guide](https://blog.4d.com/follow-4d-version-a-smarter-way-to-manage-your-dependencies/)
+requires host-version-aligned LTS `x.y.p` or R-release `xRy.p` tags.
+Ordinary component SemVer does not imply Follow4D compatibility. This pipeline
+does not implement non-SemVer R-tag publication; see AGENTS.md for migration.
+
 ## Discovery is supported, invocation is not guaranteed
 
 Official Copilot documentation supports project skills at

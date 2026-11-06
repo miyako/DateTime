@@ -20,4 +20,8 @@ patch/minor/major, commits synchronized version metadata, builds that exact SHA
 and verifies accepted transferred assets before atomically creating the tag/release.
 Signing is controlled solely by version policy, with no Publish input; require the full
 notarized-DMG and exact final ZIP host gates without unsigned fallback.
+New component release tags equal the prefix-free SemVer version, never `vX.Y.Z`.
+Read legacy stable tags only as migration baselines; preserve published history,
+consumer pins and exact signing policy. Ordinary component SemVer does not imply
+Follow4D host compatibility.
 Unsigned local acceptance needs no license activation or signing secrets.

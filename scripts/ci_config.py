@@ -21,6 +21,7 @@ from initialize import validate as validate_initialization
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = ("macos-x64", "macos-arm64", "windows-x64")
+STABLE_SEMVER = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
 SEMVER = r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:0|[1-9]\d*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?"
 
 
@@ -71,8 +72,10 @@ def load_config(root=ROOT, *, initialized=False, repository=None, tag=None):
             raise ValueError("repository identity must be owner/name")
         if repository.split("/")[1] != config["repository"]:
             raise ValueError("actual repository does not match template.json")
-    if tag is not None and tag != "v" + config["version"]:
-        raise ValueError("release tag must equal v<template.json version>")
+    if tag is not None and (not isinstance(tag, str)
+                            or not re.fullmatch(STABLE_SEMVER, tag)
+                            or tag != config["version"]):
+        raise ValueError("release tag must equal stable X.Y.Z template.json version without a v prefix")
     return config
 
 
@@ -317,7 +320,7 @@ def main():
     parser.add_argument("command", choices=("matrix", "validate", "assemble", "download-tool4d"))
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--release", action="store_true")
-    parser.add_argument("--tag", help="explicit normalized release tag (manual dispatch); defaults to GITHUB_REF_NAME")
+    parser.add_argument("--tag", help="prefix-free SemVer release tag; defaults to GITHUB_REF_NAME")
     parser.add_argument("--url", help="optional official URL override, paired with --sha256")
     parser.add_argument("--sha256", help="optional approved hash override; otherwise env pair/package.json.tool")
     args = parser.parse_args()
