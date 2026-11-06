@@ -38,6 +38,11 @@ class DateTimeVersionTests(unittest.TestCase):
                 target = self.root / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
+        self.version = json.loads((self.root / "template.json").read_text())["version"]
+        major, minor, patch_version = map(int, self.version.split("."))
+        self.patch_version = f"{major}.{minor}.{patch_version + 1}"
+        self.minor_version = f"{major}.{minor + 1}.0"
+        self.major_version = f"{major + 1}.0.0"
         self.git("init", "-q")
         self.git("config", "user.name", "Release fixture")
         self.git("config", "user.email", "release-fixture@example.invalid")
@@ -58,7 +63,8 @@ class DateTimeVersionTests(unittest.TestCase):
 
     def test_real_cpp_feature_contracts_and_protocol_examples_move_together(self):
         before = self.snapshot()
-        result = bump_release.apply(self.root, "0.2.0", stage=True)
+        version = self.minor_version
+        result = bump_release.apply(self.root, version, stage=True)
         after = self.snapshot()
         changed = sorted(name for name in after if after[name] != before[name])
         self.assertEqual(result["changed_paths"], changed)
@@ -66,42 +72,44 @@ class DateTimeVersionTests(unittest.TestCase):
         self.assertIn("cli/main.cpp", changed)
         feature = "component/DateTime/Project/Sources/Classes/DateTime.4dm"
         self.assertIn(feature, changed)
-        self.assertIn('$payload.version#"0.2.0"', after[feature].decode())
-        self.assertIn(r'\"version\":\"0.2.0\"', after["cli/main.cpp"].decode())
-        self.assertNotIn(r'\"version\":\"0.1.0\"', after["cli/main.cpp"].decode())
-        self.assertIn('smoke_test(self.executable, "0.2.0"', after["tests/test_cli.py"].decode())
+        self.assertIn(f'$payload.version#"{version}"', after[feature].decode())
+        self.assertIn(rf'\"version\":\"{version}\"', after["cli/main.cpp"].decode())
+        self.assertNotIn(rf'\"version\":\"{self.version}\"', after["cli/main.cpp"].decode())
+        self.assertIn(f'smoke_test(self.executable, "{version}"', after["tests/test_cli.py"].decode())
         native = after["tests/test_datetime_native.py"].decode()
-        self.assertEqual(native.count('"version": "0.2.0"'), 2)
+        self.assertEqual(native.count(f'"version": "{version}"'), 2)
         self.assertIn('"icuVersion": "77.1"', native)
         self.assertIn('"tzdataVersion": "2025a"', native)
-        self.assertIn('`{"protocol":1,"version":"0.2.0"}`', after["README.md"].decode())
+        self.assertIn(f'`{{"protocol":1,"version":"{version}"}}`', after["README.md"].decode())
         contract = json.loads(after["tests/host/contract.json"])
         assertions = contract["feature"]["assertions"] + contract["execution"]["assertions"]
         values = {a["path"]: a.get("equals") for a in assertions}
-        self.assertEqual(values["/version/value"], {"protocol": 1, "version": "0.2.0"})
-        self.assertEqual(json.loads(values["/renamedExecutable"]["stdout"])["version"], "0.2.0")
+        self.assertEqual(values["/version/value"], {"protocol": 1, "version": version})
+        self.assertEqual(json.loads(values["/renamedExecutable"]["stdout"])["version"], version)
         self.assertEqual(json.loads(after["tests/cli-contract.json"])["cases"][0]["stdout"]["version"],
                          "$VERSION")
         for name in ("cli/CMakeLists.txt", "cli/icu.json",
                      "component/DateTime/Documentation/Phase1.md", "release-policy.json"):
             if name in before:
                 self.assertEqual(after[name], before[name], name)
-        self.assertEqual(bump_release.apply(self.root, "0.2.0")["changed_paths"], [])
+        self.assertEqual(bump_release.apply(self.root, version)["changed_paths"], [])
         self.assertEqual(after, self.snapshot())
 
     def test_same_candidate_retry_does_not_increment_or_weaken_validation(self):
-        self.git("tag", "v0.1.0")
-        for mode, version in (("patch", "0.1.1"), ("minor", "0.2.0"), ("major", "1.0.0")):
+        self.git("tag", "v" + self.version)
+        for mode, version in (("patch", self.patch_version), ("minor", self.minor_version),
+                              ("major", self.major_version)):
             self.assertEqual(bump_release.next_version(self.root, mode)["version"], version)
-        bump_release.apply(self.root, "0.1.1")
+        version = self.patch_version
+        bump_release.apply(self.root, version)
         before = self.snapshot()
         self.assertEqual(bump_release.next_version(self.root, "patch"),
-                         {"version": "0.1.1", "tag": "v0.1.1"})
-        self.assertEqual(bump_release.apply(self.root, "0.1.1", stage=True)["changed_paths"], [])
+                         {"version": version, "tag": "v" + version})
+        self.assertEqual(bump_release.apply(self.root, version, stage=True)["changed_paths"], [])
         self.assertEqual(before, self.snapshot())
         feature = self.root / "component/DateTime/Project/Sources/Classes/DateTime.4dm"
-        feature.write_text(feature.read_text().replace('$payload.version#"0.1.1"',
-                                                       '$payload.version#"0.0.9"'))
+        feature.write_text(feature.read_text().replace(f'$payload.version#"{version}"',
+                                                       '$payload.version#""'))
         invalid = self.snapshot()
         with self.assertRaisesRegex(ValueError, "inconsistent"):
             bump_release.next_version(self.root, "patch")
@@ -109,16 +117,20 @@ class DateTimeVersionTests(unittest.TestCase):
 
     def test_actual_surfaces_fail_before_writing_or_staging(self):
         targets = {
-            "template.json": ('"version": "0.1.0"', '"version": "not-semver"'),
-            "package.json": ('"version": "0.1.0"', '"version": "0.2.0"'),
-            "cli/main.cpp": (r'\"version\":\"0.1.0\"', r'\"version\":\"0.2.0\"'),
+            "template.json": (f'"version": "{self.version}"', '"version": "not-semver"'),
+            "package.json": (f'"version": "{self.version}"', f'"version": "{self.minor_version}"'),
+            "cli/main.cpp": (rf'\"version\":\"{self.version}\"', rf'\"version\":\"{self.minor_version}\"'),
             "component/DateTime/Project/Sources/Classes/DateTime.4dm":
-                ('$payload.version#"0.1.0"', '$payload.version#""'),
-            "tests/test_cli.py": ('self.executable, "0.1.0"', 'self.executable, "0.2.0"'),
-            "tests/test_datetime_native.py": ('"version": "0.1.0"', '"version": "0.2.0"'),
-            "tests/host/Project/Sources/Methods/Smoke.4dm": ('#"0.1.0"', '#"0.2.0"'),
-            "tests/host/contract.json": ('\\"version\\":\\"0.1.0\\"', '\\"version\\":\\"0.2.0\\"'),
-            "README.md": ('"version":"0.1.0"', '"version":"0.2.0"'),
+                (f'$payload.version#"{self.version}"', '$payload.version#""'),
+            "tests/test_cli.py":
+                (f'self.executable, "{self.version}"', f'self.executable, "{self.minor_version}"'),
+            "tests/test_datetime_native.py":
+                (f'"version": "{self.version}"', f'"version": "{self.minor_version}"'),
+            "tests/host/Project/Sources/Methods/Smoke.4dm":
+                (f'#"{self.version}"', f'#"{self.minor_version}"'),
+            "tests/host/contract.json":
+                (rf'\"version\":\"{self.version}\"', rf'\"version\":\"{self.minor_version}\"'),
+            "README.md": (f'"version":"{self.version}"', f'"version":"{self.minor_version}"'),
         }
         for relative, (old, new) in targets.items():
             path = self.root / relative
@@ -127,7 +139,7 @@ class DateTimeVersionTests(unittest.TestCase):
             path.write_text(original.replace(old, new))
             before = self.snapshot()
             with self.subTest(path=relative), self.assertRaises(ValueError):
-                bump_release.apply(self.root, "1.0.0", stage=True)
+                bump_release.apply(self.root, self.major_version, stage=True)
             self.assertEqual(before, self.snapshot())
             self.assertEqual(self.git("diff", "--cached", "--name-only"), "")
             path.write_text(original)
@@ -135,18 +147,18 @@ class DateTimeVersionTests(unittest.TestCase):
     def test_cpp_optional_cmake_versions_and_docs_are_bounded(self):
         cmake = self.root / "cli/CMakeLists.txt"
         cmake.write_text(cmake.read_text().replace("project(datetime LANGUAGES",
-                                                  "project(datetime VERSION 0.1.0 LANGUAGES")
-                         + '\nset(COMPONENT_VERSION "0.1.0")\nset(ICU_VERSION "77.1")\n')
+                                                  f"project(datetime VERSION {self.version} LANGUAGES")
+                         + f'\nset(COMPONENT_VERSION "{self.version}")\nset(ICU_VERSION "77.1")\n')
         doc = self.root / "component/DateTime/Documentation/Classes/DateTime.md"
-        doc.write_text(doc.read_text() + '\n`{"protocol":1,"version":"0.1.0"}`\n')
+        doc.write_text(doc.read_text() + f'\n`{{"protocol":1,"version":"{self.version}"}}`\n')
         readme = self.root / "README.md"
         historical = '\nHistorical response {"protocol":1,"version":"0.1.0"}\n'
         readme.write_text(readme.read_text() + historical)
-        bump_release.apply(self.root, "1.0.0")
-        self.assertIn("project(datetime VERSION 1.0.0 LANGUAGES", cmake.read_text())
-        self.assertIn('set(COMPONENT_VERSION "1.0.0")', cmake.read_text())
+        bump_release.apply(self.root, self.major_version)
+        self.assertIn(f"project(datetime VERSION {self.major_version} LANGUAGES", cmake.read_text())
+        self.assertIn(f'set(COMPONENT_VERSION "{self.major_version}")', cmake.read_text())
         self.assertIn('set(ICU_VERSION "77.1")', cmake.read_text())
-        self.assertIn('"version":"1.0.0"', doc.read_text())
+        self.assertIn(f'"version":"{self.major_version}"', doc.read_text())
         self.assertTrue(readme.read_text().endswith(historical))
 
     def test_metadata_duplicates_wrong_identity_and_invalid_versions_are_rejected(self):
@@ -157,12 +169,12 @@ class DateTimeVersionTests(unittest.TestCase):
             self.assertEqual(before, self.snapshot())
         for repository in ("miyako/datetime", "other/DateTime"):
             with self.subTest(repository=repository), self.assertRaises(ValueError):
-                bump_release.apply(self.root, "1.0.0", repository)
+                bump_release.apply(self.root, self.major_version, repository)
         path = self.root / "package.json"
-        path.write_text(path.read_text().replace('"version": "0.1.0"',
-                                                '"version": "0.1.0", "version": "0.1.0"'))
+        path.write_text(path.read_text().replace(f'"version": "{self.version}"',
+                                                f'"version": "{self.version}", "version": "{self.version}"'))
         before = self.snapshot()
         with self.assertRaisesRegex(ValueError, "duplicate"):
-            bump_release.apply(self.root, "1.0.0", stage=True)
+            bump_release.apply(self.root, self.major_version, stage=True)
         self.assertEqual(before, self.snapshot())
         self.assertEqual(self.git("diff", "--cached", "--name-only"), "")
