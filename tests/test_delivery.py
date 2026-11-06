@@ -124,14 +124,14 @@ class DeliveryTests(unittest.TestCase):
 
     def package(self, **options):
         return package_component.package(
-            self.root, repository="owner/example-component", tag="v0.1.0", **options)
+            self.root, repository="owner/example-component", tag="0.1.0", **options)
 
     def test_uninitialized_fails_and_has_no_native_jobs(self):
         self.config.update(initialized=False, repository="4d-component-template", language=None)
         self.write_config()
         self.assertEqual(ci_config.matrix(ci_config.load_config(self.root)), {"include": []})
         with self.assertRaisesRegex(ValueError, "initialize"):
-            package_component.package(self.root, repository="owner/4d-component-template", tag="v0.1.0")
+            package_component.package(self.root, repository="owner/4d-component-template", tag="0.1.0")
 
     def test_matrix_only_selected_language(self):
         for language in ("go", "rust", "cpp"):
@@ -180,7 +180,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_wrong_repository(self):
         with self.assertRaisesRegex(ValueError, "actual repository"):
-            package_component.package(self.root, repository="owner/wrong", tag="v0.1.0")
+            package_component.package(self.root, repository="owner/wrong", tag="0.1.0")
 
     def test_wrong_package_name(self):
         (self.root / "package.json").write_text('{"name":"wrong"}', encoding="utf-8")
@@ -224,7 +224,8 @@ class DeliveryTests(unittest.TestCase):
             self.write_config()
 
     def test_bad_tag_or_semver(self):
-        for tag in ("0.1.0", "v0.2.0", "v0.1.0/../../escape"):
+        for tag in ("v0.1.0", "0.2.0", "0.1.0/../../escape", "20R3.2",
+                    "01.1.0", "0.1.0-rc.1", "0.1.0+build", "0.1.0\n"):
             with self.subTest(tag=tag), self.assertRaisesRegex(ValueError, "tag"):
                 package_component.package(self.root, repository="owner/example-component", tag=tag)
         for version in ("01.1.0", "0.1", "0.1.0-01", "0.1.0\n", "0.1.0/escape"):
@@ -232,6 +233,25 @@ class DeliveryTests(unittest.TestCase):
             self.write_config()
             with self.subTest(version=version), self.assertRaisesRegex(ValueError, "SemVer"):
                 ci_config.load_config(self.root)
+
+    def test_release_tag_requires_stable_version_even_when_metadata_matches(self):
+        for version in ("0.1.0-rc.1", "0.1.0+build"):
+            self.config["version"] = version
+            self.write_config()
+            self.assertEqual(ci_config.load_config(self.root)["version"], version)
+            with self.subTest(version=version), self.assertRaisesRegex(ValueError, "stable X.Y.Z"):
+                package_component.package(self.root, repository="owner/example-component", tag=version)
+
+    def test_package_default_uses_exact_environment_tag_not_configured_version(self):
+        environment = {"GITHUB_REPOSITORY": "owner/example-component", "GITHUB_REF_NAME": "0.1.0"}
+        with patch.dict(os.environ, environment, clear=True):
+            self.assertTrue(package_component.package(self.root).is_file())
+        environment["GITHUB_REF_NAME"] = "v0.1.0"
+        with patch.dict(os.environ, environment, clear=True), self.assertRaisesRegex(
+                ValueError, "without a v prefix"):
+            package_component.package(self.root)
+        with patch.dict(os.environ, {}, clear=True), self.assertRaisesRegex(ValueError, "release tag"):
+            package_component.package(self.root, repository="owner/example-component")
 
     def test_missing_resources(self):
         for resource in (self.mac, self.windows):
@@ -446,7 +466,7 @@ class DeliveryTests(unittest.TestCase):
 
     def test_release_requires_opt_in(self):
         environment = {
-            "GITHUB_REPOSITORY": "owner/example-component", "GITHUB_REF_NAME": "v0.1.0",
+            "GITHUB_REPOSITORY": "owner/example-component", "GITHUB_REF_NAME": "0.1.0",
             "FOURD_ENABLED": "false",
         }
         with patch.dict(os.environ, environment, clear=True), patch.object(
@@ -459,7 +479,7 @@ class DeliveryTests(unittest.TestCase):
         environment = {"GITHUB_REPOSITORY": "owner/example-component",
                        "GITHUB_REF_NAME": "main", "FOURD_ENABLED": "true"}
         with patch.dict(os.environ, environment, clear=True), patch.object(
-                sys, "argv", ["ci_config.py", "validate", "--release", "--tag", "v0.1.0",
+                sys, "argv", ["ci_config.py", "validate", "--release", "--tag", "0.1.0",
                               "--root", str(self.root)]):
             ci_config.main()
 

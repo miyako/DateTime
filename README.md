@@ -91,7 +91,8 @@ python3 scripts/ci_config.py assemble --root .
 python3 scripts/test_4d.py --root . --tool4d .tools/tool4d.app/Contents/MacOS/tool4d
 python3 scripts/compile_component.py --root . --tool4d .tools/tool4d.app/Contents/MacOS/tool4d
 python3 scripts/package_component.py --root . --repository miyako/DateTime \
-  --tag v0.1.0 --unpack-test
+  --tag "$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')" \
+  --unpack-test
 python3 scripts/test_4d.py --root . --tool4d .tools/tool4d.app/Contents/MacOS/tool4d \
   --component build/release-test/DateTime.4dbase
 ```
@@ -136,8 +137,9 @@ Diagnostics are retained separately, including when a host check fails.
 
 For an authorized release, open **Publish → Run workflow**, select **main**,
 and choose **mode**: **patch** (default), **minor**, or **major**. No tag entry
-is needed. The workflow bumps from the highest stable version tag, or from the
-configured version when none exists; for example, an initial configured
+is needed. The workflow bumps from the highest numeric stable version tag,
+reading both bare and legacy `v`-prefixed history, or from the configured version
+when none exists; for example, an initial configured
 `0.1.0` becomes `0.1.1` with patch. It synchronizes the component/CLI version,
 contracts and current examples, commits only registered version files to main,
 then builds and accepts that exact commit. Branch protection must permit that
@@ -159,6 +161,25 @@ signing never fall back to unsigned. See [AGENTS.md](AGENTS.md#8-icons-licensing
 for the seven Apple secret requirements; the local six-secret provisioning
 helper does not supply `CODESIGN_APPLE_ID`. Windows Authenticode is not included.
 Adding secrets alone neither enables signing nor authorizes a release.
+
+### Release tags and compatibility
+
+New tags equal the component's prefix-free SemVer version: `0.1.3`, not
+`v0.1.3`, following
+[miyako/4d-component-template#7](https://github.com/miyako/4d-component-template/pull/7).
+Package metadata, tag and signing proof must agree exactly; a release display
+title does not change the tag. Prefixed new inputs are rejected, not normalized.
+
+Existing published tags/releases, including `v0.1.2`, remain untouched.
+The planner reads legacy stable tags to avoid downgrades but emits only bare
+tags for newly accepted builds. There is no automatic aliasing, retagging or
+reuse of old acceptance/signing evidence; existing consumer pins remain valid.
+
+The official [Follow 4D version guide](https://blog.4d.com/follow-4d-version-a-smarter-way-to-manage-your-dependencies/)
+describes a separate host-version-aligned convention: LTS `x.y.p` (e.g.
+`20.2.3`) or R-release `xRy.p` (e.g. `20R3.2`). Ordinary component SemVer does not
+imply Follow4D matching or host compatibility. Use an ordinary tag/version rule
+for DateTime; this pipeline does not support R-release tags.
 
 ## Install and deployment
 

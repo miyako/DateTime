@@ -65,6 +65,7 @@ class DateTimeVersionTests(unittest.TestCase):
         before = self.snapshot()
         version = self.minor_version
         result = bump_release.apply(self.root, version, stage=True)
+        self.assertEqual(result["tag"], version)
         after = self.snapshot()
         changed = sorted(name for name in after if after[name] != before[name])
         self.assertEqual(result["changed_paths"], changed)
@@ -104,7 +105,9 @@ class DateTimeVersionTests(unittest.TestCase):
         bump_release.apply(self.root, version)
         before = self.snapshot()
         self.assertEqual(bump_release.next_version(self.root, "patch"),
-                         {"version": version, "tag": "v" + version})
+                         {"version": version, "tag": version})
+        self.assertEqual(bump_release.next_version(self.root, "patch", tags=[self.version]),
+                         {"version": version, "tag": version})
         self.assertEqual(bump_release.apply(self.root, version, stage=True)["changed_paths"], [])
         self.assertEqual(before, self.snapshot())
         feature = self.root / "component/DateTime/Project/Sources/Classes/DateTime.4dm"
@@ -114,6 +117,24 @@ class DateTimeVersionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inconsistent"):
             bump_release.next_version(self.root, "patch")
         self.assertEqual(invalid, self.snapshot())
+
+    def test_mixed_bare_and_legacy_history_selects_numeric_baseline_without_touching_refs(self):
+        tags = ["v1.9.9", "1.10.2", "v1.10.1", "1.9.99", "2.0.0-rc.1",
+                "v20.0.0-rc.1", "9.0.0+build", "v9.0.0+build", "01.2.3",
+                "v01.2.3", "vv8.0.0", "garbage"]
+        for tag in tags:
+            self.git("tag", tag)
+        before = self.snapshot()
+        refs = self.git("show-ref", "--tags")
+        for mode, version in (("patch", "1.10.3"), ("minor", "1.11.0"), ("major", "2.0.0")):
+            self.assertEqual(bump_release.next_version(self.root, mode),
+                             {"version": version, "tag": version})
+        self.assertEqual(before, self.snapshot())
+        self.assertEqual(refs, self.git("show-ref", "--tags"))
+        self.assertEqual(bump_release.next_version(self.root, "patch", tags=["1.9.9", "v1.10.2"]),
+                         {"version": "1.10.3", "tag": "1.10.3"})
+        with self.assertRaisesRegex(ValueError, "ahead"):
+            bump_release.next_version(self.root, "patch", tags=["0.0.0", "v0.0.0"])
 
     def test_actual_surfaces_fail_before_writing_or_staging(self):
         targets = {
