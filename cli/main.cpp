@@ -231,7 +231,7 @@ int run(const std::vector<std::string>& args) {
         if (total > max_total_bytes || !valid_utf8(s)) return fail(arguments);
     }
     if (args == std::vector<std::string>{"--version"}) {
-        std::cout << "{\"protocol\":1,\"version\":\"0.1.1\"}\n";
+        std::cout << "{\"protocol\":1,\"version\":\"0.1.2\"}\n";
         return 0;
     }
     if (!args.empty() && args[0] == "inspect-args") {
@@ -254,7 +254,7 @@ int run(const std::vector<std::string>& args) {
             char version[U_MAX_VERSION_STRING_LENGTH];
             u_getUnicodeVersion(unicode);
             u_versionToString(unicode, version);
-            std::cout << "{\"protocol\":1,\"version\":\"0.1.1\",\"icuVersion\":\"77.1\","
+            std::cout << "{\"protocol\":1,\"version\":\"0.1.2\",\"icuVersion\":\"77.1\","
                          "\"dataVersion\":\"77.1\",\"unicodeVersion\":"
                       << quote(version) << ",\"tzdataVersion\":\"2025a\","
                          "\"dataMode\":\"embedded-static\"}\n";

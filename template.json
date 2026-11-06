@@ -6,6 +6,6 @@
   "cli": "datetime",
   "language": "cpp",
   "feature": "Phase 1 strict instant-to-IANA-zone conversion and bounded ordered batch with embedded static ICU",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "feature_class": "DateTime"
 }

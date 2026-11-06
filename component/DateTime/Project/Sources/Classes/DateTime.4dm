@@ -140,7 +140,7 @@ Function _decode($result : Object; $field : Text)->$decoded : Object
 			If (Value type($payload.version)#Is text)
 				return This._protocolError($result; "CLI version must be Text")
 			End if
-			If (($payload.version#"0.1.1") | (OB Keys($payload).length#2))
+			If (($payload.version#"0.1.2") | (OB Keys($payload).length#2))
 				return This._protocolError($result; "Unsupported CLI version")
 			End if
 		: ($field="instant")

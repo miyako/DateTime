@@ -51,7 +51,7 @@ No host-zone/locale guessing. Batch size 1–256, ordered per-item semantic erro
 ## CLI protocol 1
 
 UTF-8, exactly one JSON line plus LF. `--version` returns
-`{"protocol":1,"version":"0.1.1"}`. `convert --instant TEXT --zone TEXT` returns:
+`{"protocol":1,"version":"0.1.2"}`. `convert --instant TEXT --zone TEXT` returns:
 
 ```json
 {"protocol":1,"instant":"2026-01-15T12:00:00.123Z","zone":"Asia/Kathmandu","local":"2026-01-15T17:45:00.123+05:45","offsetSeconds":20700}
