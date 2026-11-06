@@ -1,6 +1,6 @@
 {
   "name": "DateTime",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Phase 1 strict instant-to-IANA-zone conversion and bounded ordered batch with embedded static ICU",
   "license": "MIT",

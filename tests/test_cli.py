@@ -42,7 +42,7 @@ class CppCLI(unittest.TestCase):
         return self.run_cli(["convert", "--instant", instant, "--zone", zone], status, env)
 
     def test_native_smoke_contract(self):
-        smoke_test(self.executable, "0.1.2", ROOT / "tests/cli-contract.json")
+        smoke_test(self.executable, "0.1.3", ROOT / "tests/cli-contract.json")
 
     def test_offsets_and_day_rollover(self):
         self.assertEqual(self.convert("2026-01-15T17:45:00.12+05:45", "Asia/Kathmandu"), {
